@@ -58,7 +58,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Habits | Create/edit/delete, weekdays, completion history/streaks, reminders; focused edit/schedule/relaunch/confirmed-delete simulator case | Historical dates, broader schedule permutations and real-device reminder delivery |
 | Workouts | Routines, weekdays, exercises/sets/reps/kg/duration, history/chart/PR | Full routine/edit/delete and timer interoperability checks |
 | Nutrition | Editable custom foods/meals/macros/water and day history | Complete CRUD/category/history UI coverage |
-| Goals | Cadences, target/progress/deadline, history/completion | Deadline/cadence/edit/delete UI coverage and broader history presentation |
+| Goals | Cadences, target/progress/deadline, history/completion; focused edit/cadence/progress/relaunch/delete simulator regression | Deadline-picker, other cadence/history-date UI coverage and broader history presentation |
 | Focus/calendar | Persistent timers, session history, dated activity; Work deadline/background/relaunch/cancellation simulator regression | Break/rest, long-duration clock changes, real-device lifecycle and expanded date/layout checks |
 | Screen time | Clearly marked manual journal | Automatic collection/reporting requires native permission/entitlement integration; not implemented |
 | Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore and backup-file import; valid JSON import confirmation/cancellation/relaunch, malformed JSON rejection and native export bytes verified | Photo, newer-schema/semantic-invalid backup UI and theme validation |
@@ -181,8 +181,16 @@ one, and clamp to the display range. A completed fractional target no longer
 shows a partially filled progress bar. Three core regressions cover fractional
 targets, edited cadence/deadline/target persistence with unchanged history and
 previous-save recovery, and completion after a downward correction and later
-target crossing. All 52 core tests pass. Goal editor, date-picker, cadence-picker
-and confirmed-deletion UI acceptance remains open; these are storage/core checks.
+target crossing. All 52 core tests pass.
+
+A dedicated simulator regression passed goal title/category editing, Monthly to
+Weekly cadence selection, fractional-target progress history, completion across
+relaunch, deletion cancellation and confirmed deletion across relaunch. A
+read-only state/recovery check confirmed both progress updates, edited fields,
+exactly one deleted goal and preservation of the earlier synthetic goal. Six
+other stores retained identical saved-payload hashes. The initial picker-label
+test failure is retained separately. Deadline-picker interaction, other cadences
+and historical update dates remain open; this is not full feature acceptance.
 
 ## Habit workflow verification
 

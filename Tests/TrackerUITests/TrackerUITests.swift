@@ -1,6 +1,53 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    func testGoalEditCadenceHistoryAndConfirmedDeletionPersistWithoutReset() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-goal-workflow-fixture"]
+        let original = "Goal workflow " + UUID().uuidString.prefix(6)
+        let edited = original + " edited"
+        func openGoals() { app.tabBars.buttons["Goals"].tap() }
+        func cell(_ title: String) -> XCUIElement {
+            app.cells.containing(.staticText, identifier: title).firstMatch
+        }
+        func beginDelete() {
+            cell(String(edited)).swipeLeft(); app.buttons["Delete"].tap()
+            XCTAssertTrue(app.buttons["Delete goal"].waitForExistence(timeout: 5))
+        }
+        app.launch(); openGoals()
+        app.buttons["Create goal"].tap()
+        app.textFields["Goal title"].tap(); app.textFields["Goal title"].typeText(String(original))
+        replace(app.textFields["Target"], with: "0.5")
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(cell(String(original)).waitForExistence(timeout: 5))
+        cell(String(original)).buttons["Update progress"].tap()
+        replace(app.textFields["Total"], with: "0.25")
+        app.navigationBars.buttons["Save"].tap()
+        cell(String(original)).buttons["Edit"].tap()
+        replace(app.textFields["Goal title"], with: String(edited))
+        replace(app.textFields["Category"], with: "Verification")
+        app.buttons["Period, Monthly"].tap(); app.buttons["Weekly"].tap()
+        app.navigationBars.buttons["Save"].tap()
+        app.terminate(); app.launch(); openGoals()
+        XCTAssertTrue(cell(String(edited)).waitForExistence(timeout: 5))
+        XCTAssertTrue(cell(String(edited)).staticTexts["0.25 / 0.5 · Weekly"].exists)
+        cell(String(edited)).buttons["Update progress"].tap()
+        XCTAssertEqual(app.textFields["Total"].value as? String, "0.25")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "0.25")).firstMatch.exists)
+        replace(app.textFields["Total"], with: "0.5")
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(cell(String(edited)).images["Completed"].waitForExistence(timeout: 5))
+        app.terminate(); app.launch(); openGoals()
+        XCTAssertTrue(cell(String(edited)).images["Completed"].waitForExistence(timeout: 5))
+        beginDelete(); cancelRecovery(app.sheets.firstMatch, in: app)
+        XCTAssertTrue(cell(String(edited)).exists)
+        beginDelete(); app.buttons["Delete goal"].tap()
+        XCTAssertTrue(cell(String(edited)).waitForNonExistence(timeout: 5))
+        app.terminate(); app.launch(); openGoals()
+        XCTAssertFalse(cell(String(edited)).exists)
+    }
+
     func testHabitEditScheduleAndConfirmedDeletionPersistWithoutReset() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
