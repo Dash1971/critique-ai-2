@@ -110,6 +110,7 @@ private struct TodayScreen: View {
                                 .accessibilityLabel(day.day).accessibilityValue("\(day.doneHabits) completions")
                         }.frame(height: 170).chartXAxis(.hidden)
                     }
+                    NavigationLink("Compare recorded periods") { RecordedPeriodComparisonScreen() }
                     HStack {
                         Label("Level \(state.level)", systemImage: "star")
                         Spacer(); Text("\(state.xp) XP").monospacedDigit()
@@ -130,6 +131,67 @@ private struct TodayScreen: View {
             Text(value).font(.title2.bold()).monospacedDigit()
         }.frame(maxWidth: .infinity, alignment: .leading).padding()
             .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+private struct RecordedPeriodComparisonScreen: View {
+    @EnvironmentObject private var store: TrackerStore
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var days = 7
+    @State private var snapshotDate = Date()
+    @State private var injectedTestSnapshot = false
+    var body: some View {
+        Form {
+            Section {
+                Picker("Completed days per period", selection: $days) {
+                    Text("7 days").tag(7); Text("14 days").tag(14); Text("30 days").tag(30)
+                }.pickerStyle(.segmented)
+                Text("Two completed periods; today is excluded.").font(.caption)
+            }
+            if let state = store.state,
+               let comparison = try? state.completedPeriodComparison(days: days, now: snapshotDate) {
+                window(comparison.recent, title: "Recent period")
+                window(comparison.previous, title: "Previous period")
+                Section("How to read this") {
+                    Text("Missing records do not establish inactivity. These are saved totals, not a score of overall improvement.")
+                    Text("Habit schedules use current saved habits. Past edits and deleted habits cannot be reconstructed.")
+                    Text("Calendar periods may have different elapsed hours around daylight saving.")
+                    LabeledContent("Timezone", value: comparison.timezone)
+                }.font(.caption)
+            } else {
+                Text("Recorded periods are unavailable. No records have been changed.")
+            }
+        }.navigationTitle("Recorded periods")
+            .onAppear {
+                snapshotDate = Date()
+                // A stale clock fixture is isolated to explicit UI-test runs;
+                // foreground refresh below always uses the real device clock.
+                let arguments = ProcessInfo.processInfo.arguments
+                if arguments.contains("--ui-testing"), arguments.contains("--ui-testing-stale-comparison"), !injectedTestSnapshot {
+                    snapshotDate = Calendar.current.date(byAdding: .day, value: -1, to: snapshotDate) ?? snapshotDate
+                    injectedTestSnapshot = true
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { snapshotDate = Date() } }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in snapshotDate = Date() }
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in snapshotDate = Date() }
+    }
+    private func range(_ window: PeriodComparison.Window) -> String {
+        let calendar = Calendar.current
+        guard let end = Day.date(window.endDayExclusive, calendar: calendar),
+              let lastDay = calendar.date(byAdding: .day, value: -1, to: end) else { return window.startDay }
+        return "\(window.startDay) through \(Day.key(lastDay, calendar: calendar))"
+    }
+    private func window(_ value: PeriodComparison.Window, title: String) -> some View {
+        Section(title) {
+            Text(range(value)).font(.caption).accessibilityIdentifier(title == "Recent period" ? "comparison-recent-range" : "comparison-previous-range")
+            LabeledContent("Completed calendar days", value: "\(value.calendarDays)")
+            LabeledContent("Habit completions saved", value: "\(value.recordedHabitCompletions) / \(value.scheduledHabitOccurrences) scheduled")
+            LabeledContent("Workouts saved", value: "\(value.recordedWorkouts)")
+            LabeledContent("Workout minutes saved", value: value.recordedWorkoutMinutes.formatted(.number.precision(.fractionLength(0...1))))
+            LabeledContent("Work-focus minutes saved", value: value.recordedFocusMinutes.formatted(.number.precision(.fractionLength(0...1))))
+            LabeledContent("Elapsed hours", value: value.elapsedHours.formatted(.number.precision(.fractionLength(0...1))))
+        }
     }
 }
 

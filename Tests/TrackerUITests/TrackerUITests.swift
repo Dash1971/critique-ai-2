@@ -1,6 +1,62 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    func testRecordedPeriodComparisonRefreshesStaleWindowOnForeground() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-stale-comparison"]; app.launch()
+        let link = app.buttons["Compare recorded periods"]
+        if !link.waitForExistence(timeout: 5) || !link.isHittable { app.swipeUp() }
+        XCTAssertTrue(link.waitForExistence(timeout: 5)); link.tap()
+        let recent = app.staticTexts["comparison-recent-range"]
+        XCTAssertTrue(recent.waitForExistence(timeout: 5))
+        let calendar = Calendar.current
+        func key(_ offset: Int) -> String {
+            let date = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: Date()))!
+            let parts = calendar.dateComponents([.year, .month, .day], from: date)
+            return String(format: "%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
+        }
+        XCTAssertEqual(recent.label, "\(key(-8)) through \(key(-2))", "QA fixture must demonstrate a stale window before refresh")
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(recent.waitForExistence(timeout: 10))
+        XCTAssertEqual(recent.label, "\(key(-7)) through \(key(-1))", "Foreground must replace stale snapshot with the actual date")
+        let recentImage = XCTAttachment(screenshot: app.screenshot())
+        recentImage.name = "recorded-periods-foreground-recent"; recentImage.lifetime = .keepAlways; add(recentImage)
+        app.swipeUp()
+        let previous = app.staticTexts["comparison-previous-range"]
+        XCTAssertTrue(previous.waitForExistence(timeout: 5))
+        XCTAssertEqual(previous.label, "\(key(-14)) through \(key(-8))")
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Missing records do not establish inactivity. These are saved totals, not a score of overall improvement."].waitForExistence(timeout: 5))
+        let scopeImage = XCTAttachment(screenshot: app.screenshot())
+        scopeImage.name = "recorded-periods-scope"; scopeImage.lifetime = .keepAlways; add(scopeImage)
+    }
+    func testRecordedPeriodComparisonSwitchesCompletedWindows() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let link = app.buttons["Compare recorded periods"]
+        if !link.waitForExistence(timeout: 5) { app.swipeUp() }
+        if !link.isHittable { app.swipeUp() }
+        XCTAssertTrue(link.waitForExistence(timeout: 5)); link.tap()
+        XCTAssertTrue(app.navigationBars["Recorded periods"].waitForExistence(timeout: 5))
+        let calendar = Calendar.current; let cutoff = calendar.startOfDay(for: Date())
+        func key(_ date: Date) -> String {
+            let parts = calendar.dateComponents([.year, .month, .day], from: date)
+            return String(format: "%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
+        }
+        for days in [7, 14, 30] {
+            app.segmentedControls.buttons["\(days) days"].tap()
+            let start = calendar.date(byAdding: .day, value: -days, to: cutoff)!
+            let end = calendar.date(byAdding: .day, value: -1, to: cutoff)!
+            let recent = app.staticTexts["comparison-recent-range"]
+            XCTAssertTrue(recent.waitForExistence(timeout: 5))
+            XCTAssertEqual(recent.label, "\(key(start)) through \(key(end))")
+        }
+        XCTAssertTrue(app.staticTexts["Two completed periods; today is excluded."].exists)
+        app.navigationBars.buttons["Today"].tap()
+        XCTAssertTrue(app.buttons["Compare recorded periods"].waitForExistence(timeout: 5))
+    }
     // Prepare a new exclusive --scenario backup-import fixture, never normal data.
     func testFailedLoadBackupImportRequiresConfirmationAndPersists() throws {
         continueAfterFailure = false

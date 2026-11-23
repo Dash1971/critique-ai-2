@@ -21,7 +21,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Main coach: simulator build and native pipeline smoke passed using saved
   tracker test records. Checked output and two conversation messages persisted.
   Raw output is not presented as checked advice. The model is not release-approved.
-- Current complete-core source passes 40 tests. A build is not a substitute for
+- Current complete-core source passes 44 tests. A build is not a substitute for
   exercising every feature or testing physical-device resources.
 - Previous-save UI recovery: cancellation preserves the latest profile;
   confirming restores the preceding profile and persists across relaunch. The
@@ -54,7 +54,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Area | Present locally | Still required before claiming complete |
 | --- | --- | --- |
 | Independent identity/storage | Own app ID/source/store; original icon retained; public MIT-licensed source mirror | Separate Apple release setup and distribution acceptance |
-| Dashboard | Computed daily tracker facts, completion chart, XP/badges | Full chart/layout/accessibility review and broader streak/progress presentation |
+| Dashboard | Computed daily tracker facts, completion chart, completed-period comparison, XP/badges | Full chart/layout/accessibility review and broader streak/progress presentation |
 | Habits | Create/edit/delete, weekdays, completion history/streaks, reminders | Full edit/delete/schedule UI coverage |
 | Workouts | Routines, weekdays, exercises/sets/reps/kg/duration, history/chart/PR | Full routine/edit/delete and timer interoperability checks |
 | Nutrition | Editable custom foods/meals/macros/water and day history | Complete CRUD/category/history UI coverage |
@@ -90,6 +90,31 @@ No physical iPhone timing, certified peak memory, sustained battery/heat or
 repeated lifecycle result exists yet. Simulator timing is not phone timing.
 The standalone evaluation app's earlier no-result smoke remains retained as a
 failed attempt; a later main-tracker integration smoke passed separately.
+
+## Completed-period comparison core
+
+`AppState.completedPeriodComparison` computes adjacent windows of 1–31 completed
+calendar days, excluding today. It returns saved workout counts/minutes, clipped
+work-focus minutes, and habit occurrences/completions using current schedules.
+Half-open boundaries prevent double-counting records at a window boundary.
+Calendar-day windows retain their timezone and actual elapsed hours across DST.
+Missing records do not establish inactivity; current schedules cannot recreate
+historical edits or deleted habits. No overall improvement score is generated.
+
+Four added core regressions passed with the full 44-test suite: record/date
+boundaries, focus clipping and session kinds, habit creation/current schedules,
+and DST/invalid lengths. The Today dashboard now links to a recorded-period
+comparison with 7/14/30-day selection, separate date ranges, saved totals and scope caveats. A focused
+simulator regression passed navigation, all three recent-period date ranges
+and back navigation using the isolated synthetic store. Its saved payload still
+matched the preexisting verified export byte hash. A separate foreground
+regression starts from a QA-only stale date, backgrounds/reactivates the app,
+and verifies both refreshed ranges and readable scope text without data writes.
+The screen also listens for significant-time and timezone changes. Two captured
+normal-font dark-portrait screens were visually checked for legibility/clipping;
+large text, VoiceOver, nonzero UI totals and real midnight/timezone event delivery
+remain open. The coach is not connected to this API; its existing no-comparison
+limitation remains in force.
 
 ## Workout coaching evidence
 
