@@ -55,7 +55,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | --- | --- | --- |
 | Independent identity/storage | Own app ID/source/store; original icon retained; public MIT-licensed source mirror | Separate Apple release setup and distribution acceptance |
 | Dashboard | Computed daily tracker facts, completion chart, completed-period comparison, XP/badges | Full chart/layout/accessibility review and broader streak/progress presentation |
-| Habits | Create/edit/delete, weekdays, completion history/streaks, reminders | Full edit/delete/schedule UI coverage |
+| Habits | Create/edit/delete, weekdays, completion history/streaks, reminders; focused edit/schedule/relaunch/confirmed-delete simulator case | Historical dates, broader schedule permutations and real-device reminder delivery |
 | Workouts | Routines, weekdays, exercises/sets/reps/kg/duration, history/chart/PR | Full routine/edit/delete and timer interoperability checks |
 | Nutrition | Editable custom foods/meals/macros/water and day history | Complete CRUD/category/history UI coverage |
 | Goals | Cadences, target/progress/deadline, history/completion | Deadline/cadence/edit/delete UI coverage and broader history presentation |
@@ -173,6 +173,22 @@ Manual review found one adequate planning response and two relevance/grounding
 concerns. These are input-path checks, not a quality upgrade or phone benchmark.
 Maximum combined-input fit and main-app integration remain open. Earlier
 60-case findings used the prior input and are preserved separately.
+
+## Habit workflow verification
+
+The focused simulator case uses an independent synthetic store. Creating and
+completing a habit, renaming/category editing, disabling today's schedule across
+relaunch, and re-enabling it while preserving the completion passed. Deletion
+cancellation keeps the edited habit; confirmed deletion and its absence after
+relaunch passed. The test targets the nested native switch rather than the
+full-width SwiftUI row and checks its value actually changes.
+
+Read-only state/recovery checks confirmed the edited fields and completion
+before deletion, exactly one removed record, and unchanged prior synthetic
+habits. Five other stores retained identical payload hashes. Schedule sets are
+compared semantically, not by JSON array order. Prior interaction failures are
+retained separately. Historical review-date, reminder delivery and broader
+schedule/weekday permutations remain open; this is not full feature acceptance.
 
 ## Focus lifecycle verification
 

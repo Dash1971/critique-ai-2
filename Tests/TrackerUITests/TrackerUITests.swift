@@ -1,6 +1,58 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    func testHabitEditScheduleAndConfirmedDeletionPersistWithoutReset() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-habit-workflow-fixture"]
+        let original = "Habit workflow " + UUID().uuidString.prefix(6)
+        let edited = original + " edited"
+        let today = Calendar.current.weekdaySymbols[Calendar.current.component(.weekday, from: Date()) - 1]
+        func openHabits() { app.tabBars.buttons["Habits"].tap() }
+        func toggleToday() {
+            let control = app.switches[today]
+            for _ in 0..<3 { if control.exists && control.isHittable { break }; app.swipeUp() }
+            XCTAssertTrue(control.waitForExistence(timeout: 5))
+            let previous = control.value as? String
+            let before = XCTAttachment(string: app.debugDescription)
+            before.name = "Habit schedule before toggle"; before.lifetime = .keepAlways; add(before)
+            // SwiftUI exposes both the full-width labelled row and its inner
+            // UISwitch. The row midpoint is not the switch hit target.
+            let thumb = control.switches.firstMatch
+            XCTAssertTrue(thumb.exists); thumb.tap()
+            let after = XCTAttachment(string: app.debugDescription)
+            after.name = "Habit schedule after toggle"; after.lifetime = .keepAlways; add(after)
+            XCTAssertNotEqual(control.value as? String, previous, "The weekday control must change before saving")
+        }
+        func beginDelete() {
+            app.cells.containing(.button, identifier: "Edit " + edited).firstMatch.swipeLeft()
+            app.buttons["Delete"].tap()
+            XCTAssertTrue(app.buttons["Delete habit"].waitForExistence(timeout: 5))
+        }
+        app.launch(); openHabits()
+        app.buttons["Create habit"].tap()
+        app.textFields["Habit name"].tap(); app.textFields["Habit name"].typeText(String(original))
+        app.navigationBars.buttons["Save"].tap()
+        app.buttons[String(original) + ", not completed"].tap()
+        app.buttons["Edit " + original].tap()
+        replace(app.textFields["Habit name"], with: String(edited))
+        replace(app.textFields["Category"], with: "Verification")
+        toggleToday(); app.navigationBars.buttons["Save"].tap()
+        let completion = app.buttons[String(edited) + ", completed"]
+        XCTAssertTrue(completion.waitForExistence(timeout: 5)); XCTAssertFalse(completion.isEnabled)
+        app.terminate(); app.launch(); openHabits()
+        XCTAssertTrue(completion.waitForExistence(timeout: 5)); XCTAssertFalse(completion.isEnabled)
+        app.buttons["Edit " + edited].tap(); toggleToday()
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(completion.isEnabled, "Re-enabling the schedule must preserve its saved completion")
+        beginDelete(); cancelRecovery(app.sheets.firstMatch, in: app)
+        XCTAssertTrue(app.buttons["Edit " + edited].exists)
+        beginDelete(); app.buttons["Delete habit"].tap()
+        XCTAssertTrue(app.buttons["Edit " + edited].waitForNonExistence(timeout: 5))
+        app.terminate(); app.launch(); openHabits()
+        XCTAssertFalse(app.buttons["Edit " + edited].exists)
+        XCTAssertFalse(completion.exists)
+    }
     // Use an isolated focus fixture and preserve its existing session history.
     func testFocusDeadlineBackgroundSettlementAndRelaunchAreExactlyOnce() throws {
         continueAfterFailure = false
