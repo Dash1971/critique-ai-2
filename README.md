@@ -1,66 +1,65 @@
 # Critique AI 2.0
 
-Public source mirror: [Dash1971/critique-ai-2](https://github.com/Dash1971/critique-ai-2).
+Native self-improvement tracker with persistent local storage and experimental
+on-device coaching. No subscriptions or paywalls.
 
-Independent native application under development. No subscriptions or paywalls.
-Distribution target: TestFlight only. This repository is not LockIn and does not
-reuse LockIn's app identifier, signing runner or storage.
+## Features
 
-This repository is a reviewed source mirror, not a complete release.
-Model weights, downloaded runtime sources, build products, device evidence,
-credentials and local historical planning notes are not committed.
+- Habits, goals, workouts, meals, water intake and focus sessions.
+- Activity history, calendar, statistics, profiles and local reminders.
+- Offline coaching based on saved tracker records, with validated structured
+  output and persistent conversation history.
 
-## Current state
+Development status: incomplete. Social features, cloud synchronization, desktop
+support and automatic screen-time collection are not implemented. Model quality
+and physical-device performance remain under evaluation.
 
-**Unfinished application; nothing has been uploaded to TestFlight.** The owner
-confirmed iPhone 13. Its physical performance remains untested.
+## Code structure
 
-- `CritiqueAI2`: real persistent tracker modules. Expanded unsigned iPhone and
-  simulator builds passed. The reminder-enabled device build passed. One
-  habit/meal/focus persistence UI test and a goal/workout/calendar flow passed.
-  The hidden save-error alert was fixed and its regression passed. The main
-  coach now generates from saved tracker records and saves checked conversation
-  history; a native simulator check passed. All three tracker UI regressions
-  passed after integration. An additional profile/settings navigation check
-  exposed draft loss; the fix, focused UI regression and updated iPhone build
-  passed.
-- `CritiqueEvaluation`: clearly labeled synthetic local-coach harness, now using
-  a pinned 696 MB model, grammar-constrained proposals, app-owned factual text,
-  Swift validation and explicit nonmedical/capability boundaries. Its iPhone
-  and simulator builds passed. No model is release-approved.
-- 33 core tests and 30 host runtime checks passed. These are not real-iPhone
-  memory, speed, battery or thermal acceptance.
-- Optional social/sync, desktop, native screen-time integration, full UI coverage,
-  AI quality/lifecycle acceptance and release preparation remain incomplete.
-  No server is exposed.
+- `Sources/CritiqueCore/`: Swift package for data models, SQLite persistence,
+  statistics, reminders and coach validation. Can be built independently.
+- `App/Main/`: SwiftUI tracker application (`CritiqueAI2` target).
+- `App/LocalCoachEvaluationApp.swift`: synthetic-data model evaluation harness
+  (`CritiqueEvaluation` target).
+- `Runtime/`: C++ inference bridge using llama.cpp; iPhone Metal support,
+  constrained JSON generation, cancellation and model lifecycle management.
+- `Tests/`: core and UI tests.
+- `scripts/`: runtime builds, project generation and evaluation tooling.
+- `backend/`: standalone experimental Maple adapter; not used by the apps.
 
-See `Docs/20261123_v0_delivery_acceptance.md` for verified scope, release-blocking
-model-review caveats and current gaps. Detailed local trial evidence and
-historical development notes are not published. Large models/build evidence
-remain outside Git under ignored `local/` and `build/`.
+## Local model
 
-## Reproducible evaluation build
+The current candidate is **LFM2.5-1.2B-Instruct-QAD-Q4_0**, approximately 696 MB.
+It runs in-process without a server, API key or cloud fallback. Application code
+calculates statistics; the model proposes actions against those recorded facts.
+Swift validation rejects unsupported output. Medical and unsupported-action
+requests are outside the coach's scope.
 
-Prerequisites: Xcode with iOS SDK, CMake, Python 3, and Ruby `xcodeproj`.
-Use the exact source/model revisions in the candidate manifest. Large downloads,
-build products and device evidence belong under ignored `local/` and `build/`.
-Verify the selected model size/SHA-256 against the pinned candidate manifest.
-The current evaluation selection is `LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf`; it is
-an experimental candidate, not approved for release.
+Model revisions, sizes, checksums and licenses are recorded in
+[the candidate manifest](Docs/20261123_v0_local_model_candidates.json).
+The active selection is in [EvaluationModel.json](Resources/EvaluationModel.json).
+Model weights and downloaded runtime sources are not included in Git.
 
-The runtime source must be extracted to
-`local/vendor/llama.cpp-44d50873b56b568c28ef2ad8d6445069feaa9fbd`.
-The observed GitHub source archive SHA-256 is
-`c4ff42917031c3e4b8c7ca1ce3895283aaf24e18c6985d64d7006ef9a7f5cae4`.
-Source provenance is distinct from an upstream signed release attestation.
+## Build and test
 
-For a fresh clone, download the pinned assets separately:
+Requirements: Xcode with the iOS SDK, CMake, Python 3 and Ruby `xcodeproj`.
+The app targets iOS 17 or later. The packaged simulator configuration currently
+supports Intel x86_64; Apple Silicon simulator support requires an arm64 slice
+and corresponding project configuration.
+
+Core package tests do not require model downloads:
+
+```sh
+swift test
+```
+
+For an app build, download the pinned runtime and model into a fresh checkout:
 
 ```sh
 mkdir -p local/vendor local/models
 curl -fL https://github.com/ggml-org/llama.cpp/archive/44d50873b56b568c28ef2ad8d6445069feaa9fbd.tar.gz -o local/runtime-source.tar.gz
 shasum -a 256 local/runtime-source.tar.gz
-# Compare with the source archive SHA-256 above before extracting.
+# Verify the archive checksum below before extracting.
 tar -xzf local/runtime-source.tar.gz -C local/vendor
 curl -fL https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/8ed288026e23958ad9dfa92d53ed773a8eee7125/LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf -o local/models/LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf
 shasum -a 256 local/models/LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf
@@ -68,8 +67,7 @@ shasum -a 256 local/models/LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf
 
 Verify the model is exactly 695,755,488 bytes with SHA-256
 `bb741ebb106d543e9de114b843a3d3d73d51c74b5801e69da2abde821a0cb3e1`
-before loading it. Do not rerun the example downloads over existing local work.
-The commands are a fresh-checkout recipe, not a claim of a clean-room rebuild.
+before loading it.
 
 ```sh
 python3 scripts/build_evaluation_runtime.py host
@@ -84,44 +82,27 @@ xcodebuild -project CritiqueEvaluation.xcodeproj -scheme CritiqueAI2 \
   -derivedDataPath build/app-device CODE_SIGNING_ALLOWED=NO build
 ```
 
-The checked-in project already contains both app targets. Generator scripts are
-for creating new projects/targets and refuse to overwrite existing ones. The
-simulator runtime slice is x86_64 for the current build host; add/test arm64
-simulator support deliberately if needed on another host. No signing, Apple
-registration, GitHub publication or TestFlight upload is performed by these
-commands. Do not include source downloads or model binaries in Git history.
+The runtime archive SHA-256 is
+`c4ff42917031c3e4b8c7ca1ce3895283aaf24e18c6985d64d7006ef9a7f5cae4`.
+The checked-in Xcode project contains both app targets. Project generators are
+optional and refuse to overwrite existing projects. The commands above build
+an unsigned iOS app; signing and distribution require separate configuration.
 
-The evaluation project explicitly selects x86_64 for its simulator SDK, matching
-the packaged simulator slice; its actual iPhone build remains arm64. A generic
-multi-architecture simulator build cannot link an unbuilt arm64 simulator slice.
+## Evaluation and privacy
 
-## Measurements and privacy
+The evaluation harness measures model loading, first-token latency, generation
+duration and sampled process memory. Host and simulator results do not establish
+physical-device performance. Exported diagnostic metrics exclude prompts,
+responses, account identifiers and serial numbers. Sharing is user initiated.
+Generation is cancelled and the model released on backgrounding or memory
+pressure.
 
-The evaluation screen reports its hardware identifier/OS, recorded model load,
-first-token latency and generation duration. Completed requests write local
-diagnostic metrics; sharing those metrics is explicitly user initiated. They
-exclude prompt/answer text, account IDs and serial numbers. The app samples
-process physical footprint every 250 ms, which can miss short spikes
-and is not an Instruments-certified peak or thermal/battery acceptance result.
-All model operations run on a serial background queue; cancellation and queued
-release protect context lifetime. Foreground departure and memory pressure
-cancel generation and release the model. No silent cloud fallback exists.
-
-Host CPU inference and simulator execution are compatibility checks, not an
-iPhone performance result. The physical target is confirmed as iPhone 13.
-The complete 60-case quality review and real-device lifecycle/resource
-checks in the acceptance ledger are release gates, not claims of completed testing.
-
-## Parked cloud-adapter experiment
-
-`backend/` contains an offline-tested Maple adapter from an earlier architecture
-experiment. It is not connected to either app, does not start a server, contains
-no provider credential and is not a deployed authenticated API. The active app
-uses the bundled on-device runtime only; there is no cloud fallback.
+See the [acceptance ledger](Docs/20261123_v0_delivery_acceptance.md) for test
+coverage and outstanding limitations. Generated models, runtime downloads and
+build artifacts are excluded from version control.
 
 ## License
 
-Original project code is licensed under the [MIT License](LICENSE).
-Third-party runtime dependencies, model weights and license notices retain
-their respective licenses; MIT licensing does not relicense those components.
-See `Resources/ThirdParty/` and the pinned model manifest.
+Original project code is [MIT-licensed](LICENSE). Third-party runtime components
+and model weights retain their own licenses; see
+[third-party notices](Resources/ThirdParty/) and the candidate manifest.
