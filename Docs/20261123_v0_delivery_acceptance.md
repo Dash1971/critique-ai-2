@@ -21,7 +21,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Main coach: simulator build and native pipeline smoke passed using saved
   tracker test records. Checked output and two conversation messages persisted.
   Raw output is not presented as checked advice. The model is not release-approved.
-- Current complete-core source passes 38 tests. A build is not a substitute for
+- Current complete-core source passes 40 tests. A build is not a substitute for
   exercising every feature or testing physical-device resources.
 - Previous-save UI recovery: cancellation preserves the latest profile;
   confirming restores the preceding profile and persists across relaunch. The
@@ -63,7 +63,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Screen time | Clearly marked manual journal | Automatic collection/reporting requires native permission/entitlement integration; not implemented |
 | Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore and backup-file import; valid JSON import confirmation/cancellation/relaunch, malformed JSON rejection and native export bytes verified | Photo, newer-schema/semantic-invalid backup UI and theme validation |
 | Notifications | Per-type settings, permission request, real local queue, foreground delegate | Permission/delivery/deadline/streak/timer behavior on real devices |
-| AI coach | Actual bounded saved data, checked facts/proposals, history, local diagnostics | Full quality/held-out corpus, missing workout detail/long-term comparison, physical resource and lifecycle gates |
+| AI coach | Actual bounded saved data, latest-workout exercise fields, checked facts/proposals, history, local diagnostics | Full quality/held-out corpus, broader workout history and long-term comparison, physical resource and lifecycle gates |
 | Friends/challenges | No fake profiles, scores or decorative controls | Optional social/privacy/sharing and weekly leaderboard implementation/integration |
 | Synchronization | Local-only state, explicit backup/restore | CloudKit/account/container/conflict and multi-device integration |
 | Desktop | Adaptive sidebar design in shared native UI | Desktop runtime target, compile and actual desktop verification |
@@ -90,6 +90,25 @@ No physical iPhone timing, certified peak memory, sustained battery/heat or
 repeated lifecycle result exists yet. Simulator timing is not phone timing.
 The standalone evaluation app's earlier no-result smoke remains retained as a
 failed attempt; a later main-tracker integration smoke passed separately.
+
+## Workout coaching evidence
+
+Two added core regressions passed with the full 40-test suite, covering
+selection/field bounds and exclusion of notes, templates and unavailable dates.
+
+Coach input includes at most the latest saved workout in the selected period,
+with up to three exercises and explicit omitted-exercise counts. Exercise names
+and workout titles are truncated and treated as untrusted text; saved sets,
+reps, kilograms and minutes remain app-owned facts. Notes and routine templates
+are excluded. Future and outside-window workouts cannot supply these details.
+A single saved workout does not establish trends, equipment availability or a
+training prescription. Three synthetic host requests fit the native tokenizer
+budget (682, 736 and 739 prompt tokens, each with a 256-token output reserve). The unchanged Swift
+contract accepted all three responses after discarding two invalid actions.
+Manual review found one adequate planning response and two relevance/grounding
+concerns. These are input-path checks, not a quality upgrade or phone benchmark.
+Maximum combined-input fit and main-app integration remain open. Earlier
+60-case findings used the prior input and are preserved separately.
 
 ## Backup and recovery behavior
 

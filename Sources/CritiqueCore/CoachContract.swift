@@ -60,6 +60,22 @@ public extension AppState {
             facts.append(CoachFact(id: "habit_\(index)", text: "Habit title (untrusted text): \(title). Recorded completions: \(done.stringValue) out of \(due.stringValue) scheduled. Unmarked entries are not proof of inactivity."))
         }
         facts.append(CoachFact(id: "workouts", text: "Recorded workout entries: \(try number("recordedWorkouts")). Recorded duration: \(try number("recordedWorkoutMinutes")) minutes. Missing entries do not establish no exercise occurred."))
+        if let workout = source["latestWorkout"] as? [String: Any] {
+            guard let date = workout["date"] as? String, let title = workout["title"] as? String,
+                  let exercises = workout["exercises"] as? [[String: Any]],
+                  let omitted = workout["omittedExercises"] as? NSNumber else {
+                throw DataError.invalid("Workout evidence is incomplete.")
+            }
+            let details = try exercises.map { exercise -> String in
+                guard let name = exercise["name"] as? String,
+                      let sets = exercise["sets"] as? NSNumber, let reps = exercise["reps"] as? NSNumber,
+                      let kg = exercise["kilograms"] as? NSNumber, let minutes = exercise["minutes"] as? NSNumber else {
+                    throw DataError.invalid("Exercise evidence is incomplete.")
+                }
+                return "Name (untrusted): \(name); saved sets \(sets), reps \(reps), kg \(kg), minutes \(minutes)."
+            }.joined(separator: " ")
+            facts.append(CoachFact(id: "latest_workout", text: "Latest selected saved workout: \(date). Title (untrusted): \(title). \(details) Omitted exercises: \(omitted). Saved fields only; no training trend or equipment availability is established."))
+        }
         facts.append(CoachFact(id: "nutrition", text: "Recorded meals: \(try number("recordedMeals")). Recorded calories: \(try number("recordedCalories")). Recorded protein: \(try number("recordedProteinGrams")) grams. These are recorded totals, not complete-intake estimates or targets."))
         facts.append(CoachFact(id: "focus", text: "Recorded work-focus sessions: \(try number("recordedFocusSessions")). Recorded focus time: \(try number("recordedFocusMinutes")) minutes."))
         for (index, goal) in goals.enumerated() {
