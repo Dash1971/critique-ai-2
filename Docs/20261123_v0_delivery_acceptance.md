@@ -112,9 +112,20 @@ regression starts from a QA-only stale date, backgrounds/reactivates the app,
 and verifies both refreshed ranges and readable scope text without data writes.
 The screen also listens for significant-time and timezone changes. Two captured
 normal-font dark-portrait screens were visually checked for legibility/clipping;
-large text, VoiceOver, nonzero UI totals and real midnight/timezone event delivery
-remain open. The coach is not connected to this API; its existing no-comparison
-limitation remains in force.
+Large text, VoiceOver and real midnight/timezone event delivery remain open.
+The coach is not connected to this API; its existing no-comparison limitation
+remains in force.
+
+A separate nonzero historical comparison fixture is prepared exclusively by
+`scripts/prepare_comparison_ui_fixture.py --device SIMULATOR_UUID`; the matching
+UI case requires both `--ui-testing` and `--ui-testing-comparison-fixture`.
+The fixture is date-bound to the host local day and never replaces an existing
+store. The focused nonzero regression passed all 16 exact metric assertions
+across recent/previous 7- and 14-day windows: habit completions, workout counts,
+workout minutes and clipped focus minutes. Today-only entries were excluded;
+a crossing focus session was divided between adjacent windows. All four
+synthetic stores retained identical saved-payload hashes. The original
+accessibility-label probe failure remains retained with the local evidence.
 
 ## Workout coaching evidence
 

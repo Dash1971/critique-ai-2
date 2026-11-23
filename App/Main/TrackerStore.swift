@@ -24,6 +24,8 @@ import CritiqueCore
             if !testing { filename = "state.sqlite" }
             else if CommandLine.arguments.contains("--ui-testing-backup-import-fixture") {
                 filename = "UITest-backup-import-state.sqlite"
+            } else if CommandLine.arguments.contains("--ui-testing-comparison-fixture") {
+                filename = "UITest-comparison-state.sqlite"
             } else if CommandLine.arguments.contains("--ui-testing-recovery-fixture") {
                 filename = "UITest-recovery-state.sqlite"
             } else { filename = "UITest-state.sqlite" }

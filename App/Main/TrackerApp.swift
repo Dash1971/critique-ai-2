@@ -182,14 +182,25 @@ private struct RecordedPeriodComparisonScreen: View {
               let lastDay = calendar.date(byAdding: .day, value: -1, to: end) else { return window.startDay }
         return "\(window.startDay) through \(Day.key(lastDay, calendar: calendar))"
     }
+    private func metricID(_ title: String, _ metric: String) -> String {
+        "comparison-" + (title == "Recent period" ? "recent-" : "previous-") + metric
+    }
     private func window(_ value: PeriodComparison.Window, title: String) -> some View {
         Section(title) {
             Text(range(value)).font(.caption).accessibilityIdentifier(title == "Recent period" ? "comparison-recent-range" : "comparison-previous-range")
             LabeledContent("Completed calendar days", value: "\(value.calendarDays)")
-            LabeledContent("Habit completions saved", value: "\(value.recordedHabitCompletions) / \(value.scheduledHabitOccurrences) scheduled")
-            LabeledContent("Workouts saved", value: "\(value.recordedWorkouts)")
-            LabeledContent("Workout minutes saved", value: value.recordedWorkoutMinutes.formatted(.number.precision(.fractionLength(0...1))))
-            LabeledContent("Work-focus minutes saved", value: value.recordedFocusMinutes.formatted(.number.precision(.fractionLength(0...1))))
+            LabeledContent("Habit completions saved") {
+                Text("\(value.recordedHabitCompletions) / \(value.scheduledHabitOccurrences) scheduled").accessibilityIdentifier(metricID(title, "habits"))
+            }
+            LabeledContent("Workouts saved") {
+                Text("\(value.recordedWorkouts)").accessibilityIdentifier(metricID(title, "workouts"))
+            }
+            LabeledContent("Workout minutes saved") {
+                Text(value.recordedWorkoutMinutes.formatted(.number.precision(.fractionLength(0...1)))).accessibilityIdentifier(metricID(title, "workout-minutes"))
+            }
+            LabeledContent("Work-focus minutes saved") {
+                Text(value.recordedFocusMinutes.formatted(.number.precision(.fractionLength(0...1)))).accessibilityIdentifier(metricID(title, "focus-minutes"))
+            }
             LabeledContent("Elapsed hours", value: value.elapsedHours.formatted(.number.precision(.fractionLength(0...1))))
         }
     }

@@ -1,6 +1,28 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    // Prepare a new exclusive synthetic comparison fixture before this test.
+    func testRecordedPeriodComparisonDisplaysNonzeroSavedTotals() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--ui-testing-comparison-fixture"]; app.launch()
+        let link = app.buttons["Compare recorded periods"]
+        if !link.waitForExistence(timeout: 5) || !link.isHittable { app.swipeUp() }
+        XCTAssertTrue(link.waitForExistence(timeout: 5)); link.tap()
+        func verify(_ period: String, _ habits: String, _ workouts: String, _ minutes: String, _ focus: String) {
+            for (metric, label, expected) in [("habits", "Habit completions saved", habits), ("workouts", "Workouts saved", workouts), ("workout-minutes", "Workout minutes saved", minutes), ("focus-minutes", "Work-focus minutes saved", focus)] {
+                let value = app.staticTexts["comparison-\(period)-\(metric)"]
+                XCTAssertTrue(value.waitForExistence(timeout: 5)); XCTAssertEqual(value.label, "\(label), \(expected)")
+            }
+        }
+        verify("recent", "1 / 7 scheduled", "1", "30", "35")
+        app.swipeUp()
+        verify("previous", "1 / 7 scheduled", "1", "45", "25")
+        app.swipeDown(); app.swipeDown()
+        app.segmentedControls.buttons["14 days"].tap()
+        verify("recent", "2 / 14 scheduled", "2", "75", "60")
+        app.swipeUp()
+        verify("previous", "1 / 14 scheduled", "1", "60", "0")
+    }
     func testRecordedPeriodComparisonRefreshesStaleWindowOnForeground() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
