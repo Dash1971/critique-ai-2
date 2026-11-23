@@ -1,0 +1,88 @@
+{
+  "status": "liquid-candidates-retest-after-chat-framing-fix",
+  "observed_date": "2026-11-23",
+  "target": {
+    "model_name": "iPhone 13",
+    "confirmed": false
+  },
+  "inference": {
+    "mode": "on-device",
+    "cloud_fallback": false,
+    "context_tokens": 2048,
+    "max_output_tokens": 256,
+    "thinking": false
+  },
+  "candidates": [
+    {
+      "role": "primary-evaluation-candidate",
+      "upstream_model": "Qwen/Qwen3.5-0.8B",
+      "artifact_publisher": "unsloth",
+      "repository": "unsloth/Qwen3.5-0.8B-GGUF",
+      "revision": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+      "filename": "Qwen3.5-0.8B-Q4_K_M.gguf",
+      "bytes": 532517120,
+      "sha256_publisher_metadata": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517",
+      "locally_verified": true,
+      "license_metadata": "apache-2.0",
+      "quality_gate": "failed"
+    },
+    {
+      "role": "control-candidate-not-bundled-by-default",
+      "upstream_model": "Qwen/Qwen3-0.6B",
+      "artifact_publisher": "ggml-org",
+      "repository": "ggml-org/Qwen3-0.6B-GGUF",
+      "revision": "afe8ad3577aa22500b3cd1c880f153b3b0e1cae8",
+      "filename": "Qwen3-0.6B-Q8_0.gguf",
+      "bytes": 804753632,
+      "sha256_publisher_metadata": "361cc68159042c36ebff7715dc5a2e4612153e88f3e9c9c234820849d6dc9e1d",
+      "locally_verified": true,
+      "license_metadata": "apache-2.0",
+      "quality_gate": "failed"
+    },
+    {
+      "role": "mobile-fallback-evaluation-only",
+      "upstream_model": "LiquidAI/LFM2.5-1.2B-Instruct",
+      "artifact_publisher": "LiquidAI",
+      "repository": "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
+      "revision": "8ed288026e23958ad9dfa92d53ed773a8eee7125",
+      "filename": "LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf",
+      "bytes": 695755488,
+      "sha256_publisher_metadata": "bb741ebb106d543e9de114b843a3d3d73d51c74b5801e69da2abde821a0cb3e1",
+      "locally_verified": true,
+      "license_metadata": "LFM Open License v1.0",
+      "quality_gate": "retest-required; prior-bridge-tokenized-BOS-as-text"
+    },
+    {
+      "role": "new-comparison-evaluation-only",
+      "upstream_model": "LiquidAI/LFM3-1.7B",
+      "artifact_publisher": "LiquidAI",
+      "repository": "LiquidAI/LFM3-1.7B-GGUF",
+      "revision": "cd0c74c575b5c416f3011b5b4c298077f26ca8c2",
+      "filename": "LFM3-1.7B-QAD-Q4_0.gguf",
+      "bytes": 1049615680,
+      "sha256_publisher_metadata": "43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452",
+      "locally_verified": true,
+      "license_metadata": "LFM Open License v1.0",
+      "quality_gate": "integration-retest-in-progress"
+    },
+    {
+      "role": "2B-comparison-evaluation-only",
+      "upstream_model": "Qwen/Qwen3.5-2B",
+      "artifact_publisher": "unsloth",
+      "repository": "unsloth/Qwen3.5-2B-GGUF",
+      "revision": "f6d5376be1edb4d416d56da11e5397a961aca8ae",
+      "filename": "Qwen3.5-2B-Q4_K_M.gguf",
+      "bytes": 1280835840,
+      "sha256_publisher_metadata": "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
+      "locally_verified": true,
+      "license_metadata": "apache-2.0",
+      "quality_gate": "pending; physical-device memory unverified"
+    }
+  ],
+  "runtime": {
+    "repository": "https://github.com/ggml-org/llama.cpp",
+    "revision_observed_for_evaluation": "44d50873b56b568c28ef2ad8d6445069feaa9fbd",
+    "status": "host-bridge-built-and-tested; native-profile-b-checkpoint-built; latest-lfm-profile-host-only",
+    "apple_integration": "XCFramework plus Metal; in-process, no server"
+  }
+}

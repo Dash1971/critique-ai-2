@@ -1,0 +1,27 @@
+.build/
+build/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+*.sqlite*
+*.db*
+*.env
+__pycache__/
+.venv/
+local/
+*.ipa
+*.xcarchive/
+*.xcresult/
+*.gguf
+*.xcframework/
+.env.*
+*.p8
+*.p12
+*.mobileprovision
+*.pem
+*.key
+# Local historical planning/checkpoint notes, not the reviewed source mirror.
+Docs/20261123_v0_ai_options.md
+Docs/20261123_v0_iphone_local_coach_spec.md
+Docs/20261123_v1_local_coach_evaluation.md
+Docs/20261123_v2_local_coach_evaluation.md

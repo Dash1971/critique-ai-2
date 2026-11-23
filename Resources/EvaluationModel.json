@@ -1,0 +1,7 @@
+{
+  "name": "LiquidAI/LFM2.5-1.2B-Instruct",
+  "filename": "LFM2.5-1.2B-Instruct-QAD-Q4_0.gguf",
+  "sha256": "bb741ebb106d543e9de114b843a3d3d73d51c74b5801e69da2abde821a0cb3e1",
+  "bytes": 695755488,
+  "quality_status": "Evaluation only; not approved for coaching release"
+}

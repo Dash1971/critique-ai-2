@@ -1,0 +1,2 @@
+# Preserve original third-party license notices byte-for-byte.
+Resources/ThirdParty/* -text
