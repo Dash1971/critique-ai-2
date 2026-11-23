@@ -146,13 +146,7 @@ private final class ModelWorker: @unchecked Sendable {
                 guard status == 0 else { throw EvaluationFailure(message: String(cString: error)) }
                 guard !metrics.cancelled, !metrics.reached_limit else { throw EvaluationFailure(message: "Generation cancelled or incomplete. No unchecked answer was displayed.") }
                 let checked = try CoachContract.check(sink.bytes, against: fixtureContext)
-                let facts = checked.facts.map { "• " + $0.text }.joined(separator: "\n")
-                let suggestions = checked.suggestions.map { action in
-                    "• " + action.text + (action.proposedMinutes.map { " (Proposed duration: \($0) min.)" } ?? "")
-                }.joined(separator: "\n")
-                let omitted = checked.rejectedSuggestionCount > 0 ? "\nSome generated suggestions failed validation and were omitted." : ""
-                let text = "Recorded facts · app calculated\n" + facts + "\n\nNew proposals · generated\n" + suggestions + omitted
-                completion(.success(CheckedRun(text: text, metrics: metrics)))
+                completion(.success(CheckedRun(text: checked.displayText, metrics: metrics)))
             } catch { completion(.failure(error)) }
         }
     }
@@ -220,7 +214,7 @@ private enum CoachEvidenceMode: String, CaseIterable {
                     let m = checked.metrics
                     self.answer = checked.text
                     self.firstDeliveredSeconds = ProcessInfo.processInfo.systemUptime - requestStarted
-                    self.status = "Finished locally. Proposals are not saved activity completions."
+                    self.status = "Finished locally. Recorded facts and generated text are labeled separately."
                     let requestSeconds = ProcessInfo.processInfo.systemUptime - requestStarted
                     self.report = String(format: "Recorded model load: %.2f s\nFirst token (after load): %.2f s\nRequest including load/hash: %.2f s\nGeneration: %.2f s\nPrompt: %d tokens · Output: %d tokens", m.load_seconds, m.first_token_seconds, requestSeconds, m.total_seconds, m.prompt_tokens, m.generated_tokens)
                     if let bytes = observation.peakBytes {
@@ -314,6 +308,7 @@ struct LocalCoachScreen: View {
                     Text("7 days").tag(7); Text("14 days").tag(14); Text("30 days").tag(30)
                 }.disabled(model.running)
                 Text("Individual detail is bounded to fit the local model. Missing entries are not proof that an activity did not happen.").font(.caption).foregroundStyle(.secondary)
+                Text("Ask a complete question. Earlier messages are saved for reference but are not included in a new request.").font(.caption).foregroundStyle(.secondary)
             }
             Section {
                 DisclosureGroup("App-calculated evidence", isExpanded: $previewExpanded) {
@@ -332,7 +327,7 @@ struct LocalCoachScreen: View {
                 Text(model.status).font(.caption)
             }
             if !model.answer.isEmpty {
-                Section("Recorded facts and new proposals") { Text(model.answer).textSelection(.enabled) }
+                Section("Coach response") { Text(model.answer).textSelection(.enabled) }
             }
             Section {
                 NavigationLink("Local model and diagnostics") { LocalCoachDetails(model: model) }

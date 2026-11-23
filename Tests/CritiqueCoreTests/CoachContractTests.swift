@@ -9,6 +9,34 @@ final class CoachContractTests: XCTestCase {
         XCTAssertEqual(reply.facts[0].text, "Recorded completions: 2 out of 7 scheduled.")
         XCTAssertEqual(reply.suggestions[0].proposedMinutes, 10)
     }
+    func testRecordQuestionCanAnswerWithFactsWithoutInventingAdvice() throws {
+        let reply = try CoachContract.check(data(#"{"fact_ids":["habit_0"],"response_kind":"facts","suggestions":[],"question":null}"#), against: context)
+        XCTAssertEqual(reply.kind, .facts)
+        XCTAssertTrue(reply.suggestions.isEmpty)
+        XCTAssertTrue(reply.displayText.contains("Recorded completions: 2 out of 7 scheduled."))
+        XCTAssertFalse(reply.displayText.contains("New proposals"))
+    }
+    func testClarifyingQuestionSurvivesValidationAndPresentation() throws {
+        let reply = try CoachContract.check(data(#"{"fact_ids":["habit_0"],"response_kind":"clarification","suggestions":[],"question":"Which activity would you like to work on first?"}"#), against: context)
+        XCTAssertEqual(reply.kind, .clarification)
+        XCTAssertTrue(reply.displayText.contains("Which activity would you like to work on first?"))
+        XCTAssertFalse(reply.displayText.contains("New proposals"))
+    }
+    func testResponseKindsMustMatchTheirContents() throws {
+        for payload in [
+            #"{"fact_ids":["habit_0"],"response_kind":"plan","suggestions":[],"question":null}"#,
+            #"{"fact_ids":["habit_0"],"response_kind":"clarification","suggestions":[],"question":null}"#,
+            #"{"fact_ids":["habit_0"],"response_kind":"facts","suggestions":[{"kind":"practice","text":"Try reading."}],"question":null}"#,
+            #"{"fact_ids":["habit_0"],"response_kind":"clarification","suggestions":[],"question":"First question? Another question?"}"#,
+            #"{"fact_ids":["habit_0"],"response_kind":"clarification","suggestions":[],"question":"What medication dosage should you take?"}"#
+        ] { XCTAssertThrowsError(try CoachContract.check(data(payload), against: context)) }
+        let scope = CoachFactContext(scope: "Selected records", facts: [CoachFact(id: "scope", text: "Selected records")])
+        XCTAssertThrowsError(try CoachContract.check(data(#"{"fact_ids":["scope"],"response_kind":"facts","suggestions":[],"question":null}"#), against: scope))
+    }
+    func testDuplicateContextIdentifiersAreRejectedWithoutTrapping() {
+        let duplicate = CoachFactContext(scope: "Invalid", facts: [context.facts[0], context.facts[0]])
+        XCTAssertThrowsError(try CoachContract.check(data(#"{"fact_ids":["habit_0"],"suggestions":[{"kind":"practice","text":"Try reading."}]}"#), against: duplicate))
+    }
     func testInventedEvidenceIsRejected() {
         XCTAssertThrowsError(try CoachContract.check(data(#"{"fact_ids":["seven_of_seven"],"suggestions":[{"kind":"practice","text":"Try reading."}]}"#), against: context))
     }
