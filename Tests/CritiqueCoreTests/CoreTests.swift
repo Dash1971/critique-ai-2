@@ -1,4 +1,5 @@
 import XCTest
+import CSQLite
 @testable import CritiqueCore
 
 final class CoreTests: XCTestCase {
@@ -36,6 +37,75 @@ final class CoreTests: XCTestCase {
     func testDuplicateIdentifiersRejectedOnImport() throws {
         var state = AppState(); let habit = Habit(title: "Read"); state.habits = [habit, habit]
         XCTAssertThrowsError(try Database.decode(Database.encode(state)))
+    }
+    // These tests mutate only disposable synthetic databases.
+    private func execute(_ sql: String, at url: URL) throws {
+        var handle: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &handle), SQLITE_OK)
+        defer { sqlite3_close(handle) }
+        guard sqlite3_exec(handle, sql, nil, nil, nil) == SQLITE_OK else {
+            throw DataError.database(String(cString: sqlite3_errmsg(handle)))
+        }
+    }
+    func testRecoveryRequiresAPreviousSave() throws {
+        let database = try Database(url: databaseURL())
+        XCTAssertNil(try database.recoverySnapshot())
+        XCTAssertThrowsError(try database.restoreRecoverySnapshot())
+        var first = AppState(); first.profile.username = "First"; try database.save(first)
+        XCTAssertNil(try database.recoverySnapshot())
+        XCTAssertThrowsError(try database.restoreRecoverySnapshot())
+        XCTAssertEqual(try database.load().profile.username, "First")
+    }
+    func testRecoveryRestoresPreviousSaveAndCanUndoAcrossReopen() throws {
+        let url = try databaseURL()
+        var database: Database? = try Database(url: url)
+        var state = AppState(); state.profile.username = "Before"; try database!.save(state)
+        state.profile.username = "After"; try database!.save(state)
+        XCTAssertEqual(try database!.restoreRecoverySnapshot().profile.username, "Before")
+        database = nil
+        let reopened = try Database(url: url)
+        XCTAssertEqual(try reopened.load().profile.username, "Before")
+        XCTAssertEqual(try reopened.recoverySnapshot()?.profile.username, "After")
+        XCTAssertEqual(try reopened.restoreRecoverySnapshot().profile.username, "After")
+    }
+    func testRecoveryRepairsInvalidCurrentPayloadWithoutInstallingInvalidSnapshot() throws {
+        let url = try databaseURL(); let database = try Database(url: url)
+        var state = AppState(); state.profile.username = "Recoverable"; try database.save(state)
+        state.profile.username = "Second"; try database.save(state)
+        try execute("UPDATE app_state SET payload='broken-json' WHERE id=1", at: url)
+        XCTAssertThrowsError(try database.load())
+        XCTAssertEqual(try database.restoreRecoverySnapshot().profile.username, "Recoverable")
+        // The original invalid row remains as recovery until a successful save.
+        XCTAssertThrowsError(try database.recoverySnapshot())
+        XCTAssertThrowsError(try database.restoreRecoverySnapshot())
+        XCTAssertEqual(try database.load().profile.username, "Recoverable")
+    }
+    func testInvalidOrFutureRecoveryLeavesCurrentRecordsIntact() throws {
+        let url = try databaseURL(); let database = try Database(url: url)
+        var state = AppState(); state.profile.username = "Keep me"; try database.save(state)
+        for payload in ["broken-json", "{\"schema\":99}"] {
+            try execute("INSERT OR REPLACE INTO recovery(id,payload) VALUES(1,'\(payload)')", at: url)
+            XCTAssertThrowsError(try database.restoreRecoverySnapshot())
+            XCTAssertEqual(try database.load().profile.username, "Keep me")
+        }
+        var future = try JSONSerialization.jsonObject(with: Database.encode(state)) as! [String: Any]
+        future["schema"] = 99
+        let json = String(decoding: try JSONSerialization.data(withJSONObject: future), as: UTF8.self)
+            .replacingOccurrences(of: "'", with: "''")
+        try execute("UPDATE recovery SET payload='\(json)' WHERE id=1", at: url)
+        XCTAssertThrowsError(try database.restoreRecoverySnapshot()) { error in
+            guard case DataError.unsupportedVersion = error else { return XCTFail("Expected unsupported schema, got \(error)") }
+        }
+        XCTAssertEqual(try database.load().profile.username, "Keep me")
+    }
+    func testFailedRecoveryWriteRollsBackBothRows() throws {
+        let url = try databaseURL(); let database = try Database(url: url)
+        var state = AppState(); state.profile.username = "Before"; try database.save(state)
+        state.profile.username = "After"; try database.save(state)
+        try execute("CREATE TRIGGER fail_update BEFORE UPDATE ON app_state BEGIN SELECT RAISE(ABORT, 'synthetic write failure'); END", at: url)
+        XCTAssertThrowsError(try database.restoreRecoverySnapshot())
+        XCTAssertEqual(try database.load().profile.username, "After")
+        XCTAssertEqual(try database.recoverySnapshot()?.profile.username, "Before")
     }
     func testTimerSettlesExactlyOnceAtItsDeadline() {
         let start = Date(timeIntervalSince1970: 1_800_000_000)

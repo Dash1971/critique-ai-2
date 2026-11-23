@@ -32,8 +32,15 @@ private struct TrackerRoot: View {
     var body: some View {
         Group {
             if store.state == nil {
-                ContentUnavailableView("Saved data could not be opened", systemImage: "externaldrive.badge.exclamationmark",
-                    description: Text(store.error ?? "No changes have been written."))
+                VStack(spacing: 16) {
+                    ContentUnavailableView("Saved data could not be opened", systemImage: "externaldrive.badge.exclamationmark",
+                        description: Text(store.error ?? "No changes have been written."))
+                    Button("Try again") { store.reload() }
+                    PreviousSaveRecoveryButton()
+                    BackupRestoreButton()
+                    Text("No records are replaced unless you confirm a restore. If storage itself cannot be opened, restore is unavailable until it can be opened again.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.padding()
             } else if horizontalSize == .compact {
                 TabView(selection: Binding(get: { selected ?? .today }, set: { selected = $0 })) {
                     ForEach(Destination.allCases) { destination in
@@ -136,8 +143,6 @@ private struct PreferencesSheet: View {
     @State private var photo: Data?
     @State private var backup: JSONBackupDocument?
     @State private var exporting = false
-    @State private var importing = false
-    @State private var restored: AppState?
     @State private var reset = false
     var body: some View {
         EditorNavigationStack {
@@ -158,7 +163,8 @@ private struct PreferencesSheet: View {
                             backup = JSONBackupDocument(data: try Database.encode(state)); exporting = true
                         } catch { store.error = error.localizedDescription }
                     }
-                    Button("Restore backup") { importing = true }
+                    BackupRestoreButton { dismiss() }
+                    PreviousSaveRecoveryButton { dismiss() }
                     Button("Reset application data", role: .destructive) { reset = true }
                     Text("Backups contain your activity and profile data. Store them somewhere private. Restore replaces this installation's current records.").font(.caption)
                 }
@@ -190,6 +196,37 @@ private struct PreferencesSheet: View {
                           defaultFilename: "critique-backup-\(Day.key(Date()))") { result in
                 if case .failure(let error) = result { store.error = error.localizedDescription }
             }
+            .confirmationDialog("Reset all application data on this device? Export a backup first if you need these records.", isPresented: $reset, titleVisibility: .visible) {
+                Button("Reset all data", role: .destructive) { if store.change({ $0 = AppState() }) { dismiss() } }
+            }
+        }
+    }
+}
+
+private struct PreviousSaveRecoveryButton: View {
+    @EnvironmentObject private var store: TrackerStore
+    @State private var confirming = false
+    var onRestored: () -> Void = {}
+    var body: some View {
+        Button("Restore previous save") { confirming = true }
+            .disabled(!store.recoveryAvailable)
+            .confirmationDialog("Restore the previous save? This replaces current records with the immediately preceding saved version, not a full backup.",
+                                isPresented: $confirming, titleVisibility: .visible) {
+                Button("Restore previous save", role: .destructive) {
+                    if store.restorePreviousSave() { onRestored() }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+    }
+}
+
+private struct BackupRestoreButton: View {
+    @EnvironmentObject private var store: TrackerStore
+    @State private var importing = false
+    @State private var restored: AppState?
+    var onRestored: () -> Void = {}
+    var body: some View {
+        Button("Restore backup") { importing = true }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 do {
                     let url = try result.get()
@@ -200,13 +237,11 @@ private struct PreferencesSheet: View {
             }
             .confirmationDialog("Replace current data with this validated backup?", isPresented: Binding(get: { restored != nil }, set: { if !$0 { restored = nil } }), titleVisibility: .visible) {
                 Button("Replace current data", role: .destructive) {
-                    if let value = restored, store.change({ $0 = value }) { dismiss() }; restored = nil
+                    if let value = restored, store.restoreBackup(value) { onRestored() }
+                    restored = nil
                 }
+                Button("Cancel", role: .cancel) {}
             }
-            .confirmationDialog("Reset all application data on this device? Export a backup first if you need these records.", isPresented: $reset, titleVisibility: .visible) {
-                Button("Reset all data", role: .destructive) { if store.change({ $0 = AppState() }) { dismiss() } }
-            }
-        }
     }
 }
 

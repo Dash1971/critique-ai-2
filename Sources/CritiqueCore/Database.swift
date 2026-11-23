@@ -32,11 +32,18 @@ public final class Database {
         }
     }
     public func load() throws -> AppState {
+        try readState(from: "app_state") ?? AppState()
+    }
+    /// The immediately preceding committed state, not an archival backup.
+    public func recoverySnapshot() throws -> AppState? {
+        try readState(from: "recovery")
+    }
+    private func readState(from table: String) throws -> AppState? {
         var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(handle, "SELECT payload FROM app_state WHERE id=1", -1, &statement, nil) == SQLITE_OK else { throw DataError.database("Cannot read saved data") }
+        guard sqlite3_prepare_v2(handle, "SELECT payload FROM \(table) WHERE id=1", -1, &statement, nil) == SQLITE_OK else { throw DataError.database("Cannot read saved data") }
         defer { sqlite3_finalize(statement) }
         let result = sqlite3_step(statement)
-        if result == SQLITE_DONE { return AppState() }
+        if result == SQLITE_DONE { return nil }
         guard result == SQLITE_ROW, let bytes = sqlite3_column_text(statement, 0) else { throw DataError.database("Cannot read saved data") }
         return try Self.decode(Data(String(cString: bytes).utf8))
     }
@@ -45,16 +52,33 @@ public final class Database {
         let data = try Self.encode(state)
         try execute("BEGIN IMMEDIATE")
         do {
-            try execute("DELETE FROM recovery; INSERT INTO recovery(id,payload) SELECT id,payload FROM app_state;")
-            var statement: OpaquePointer?
-            guard sqlite3_prepare_v2(handle, "INSERT INTO app_state(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload", -1, &statement, nil) == SQLITE_OK else { throw DataError.database("Cannot prepare save") }
-            defer { sqlite3_finalize(statement) }
-            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-            let payload = String(decoding: data, as: UTF8.self)
-            guard sqlite3_bind_text(statement, 1, payload, -1, transient) == SQLITE_OK,
-                  sqlite3_step(statement) == SQLITE_DONE else { throw DataError.database("Cannot save changes") }
+            try replaceCurrent(with: data)
             try execute("COMMIT")
         } catch { try? execute("ROLLBACK"); throw error }
+    }
+    /// Validate and swap under one write lock. The replaced payload (even if
+    /// unreadable) remains in recovery until the next successful save. A failed
+    /// restore changes neither row; an invalid snapshot is never installed.
+    @discardableResult public func restoreRecoverySnapshot() throws -> AppState {
+        try execute("BEGIN IMMEDIATE")
+        do {
+            guard let snapshot = try recoverySnapshot() else {
+                throw DataError.invalid("No previous save is available.")
+            }
+            try replaceCurrent(with: Self.encode(snapshot))
+            try execute("COMMIT")
+            return snapshot
+        } catch { try? execute("ROLLBACK"); throw error }
+    }
+    private func replaceCurrent(with data: Data) throws {
+        try execute("DELETE FROM recovery; INSERT INTO recovery(id,payload) SELECT id,payload FROM app_state;")
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(handle, "INSERT INTO app_state(id,payload) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload", -1, &statement, nil) == SQLITE_OK else { throw DataError.database("Cannot prepare save") }
+        defer { sqlite3_finalize(statement) }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        let payload = String(decoding: data, as: UTF8.self)
+        guard sqlite3_bind_text(statement, 1, payload, -1, transient) == SQLITE_OK,
+              sqlite3_step(statement) == SQLITE_DONE else { throw DataError.database("Cannot save changes") }
     }
     public static func encode(_ state: AppState) throws -> Data {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

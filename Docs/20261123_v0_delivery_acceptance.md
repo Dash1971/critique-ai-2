@@ -1,13 +1,16 @@
 # Delivery acceptance ledger — 2026-11-23
 
 This is an unfinished independent application, not a TestFlight delivery.
-The confirmed physical target is iPhone 13. This ledger distinguishes
+Physical-device acceptance remains open. This ledger distinguishes
 implemented paths, observed evidence, and requirements not yet fulfilled.
 
 ## Verified checkpoints
 
 - Core storage: SQLite/WAL persistence, validation before atomic save, recovery
-  snapshot and validated JSON backup. The 33-test core suite passed.
+  snapshot and validated JSON backup. The updated 38-test core suite passed,
+  including five recovery cases: absent snapshot, restore/undo across reopen,
+  corrupt current data, invalid/newer snapshot and transaction rollback on write
+  failure. All fixtures are disposable synthetic databases.
 - Tracker UI: habit/meal/focus relaunch persistence and goal/workout/calendar
   flows passed. A missing editor error alert was reproduced, fixed and its
   negative regression passed. Other CRUD paths are implemented but not all
@@ -18,8 +21,16 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Main coach: simulator build and native pipeline smoke passed using saved
   tracker test records. Checked output and two conversation messages persisted.
   Raw output is not presented as checked advice. The model is not release-approved.
-- Current complete-core source passes 33 tests. A build is not a substitute for
+- Current complete-core source passes 38 tests. A build is not a substitute for
   exercising every feature or testing physical-device resources.
+- Previous-save UI recovery: cancellation preserves the latest profile;
+  confirming restores the preceding profile and persists across relaunch. The
+  focused simulator regression passed. A compact-popover selector failure was
+  corrected in the test; it was not an observed application data-loss failure.
+- Failed-load UI recovery: a separate corrupt-data fixture passed retry without
+  reset, backup-picker cancellation, recovery cancellation, explicit recovery,
+  restored profile across relaunch and disabling an unreadable recovery row.
+  Successful file import/export and invalid-backup UI handling remain unverified.
 
 ## Implementation and outstanding gates
 
@@ -33,7 +44,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Goals | Cadences, target/progress/deadline, history/completion | Deadline/cadence/edit/delete UI coverage and broader history presentation |
 | Focus/calendar | Persistent work/break/rest timers, session history, dated activity | Background/lifecycle boundaries and expanded date/layout checks |
 | Screen time | Clearly marked manual journal | Automatic collection/reporting requires native permission/entitlement integration; not implemented |
-| Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls | Photo, file-picker, confirmation, restore and theme UI validation |
+| Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore, cancellation and relaunch verified | Photo, successful file-picker import/export, invalid-backup UI and theme validation |
 | Notifications | Per-type settings, permission request, real local queue, foreground delegate | Permission/delivery/deadline/streak/timer behavior on real devices |
 | AI coach | Actual bounded saved data, checked facts/proposals, history, local diagnostics | Full quality/held-out corpus, missing workout detail/long-term comparison, physical resource and lifecycle gates |
 | Friends/challenges | No fake profiles, scores or decorative controls | Optional social/privacy/sharing and weekly leaderboard implementation/integration |
@@ -42,6 +53,16 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Distribution | Unsigned development builds only | App registration, reviewed signing configuration, archive/bundle audit and TestFlight processing/tester access |
 
 ## Release-blocking evidence
+
+The 60-case wording-robustness batch reused seven synthetic saved histories.
+The unchanged Swift contract accepted 53 responses and rejected seven: three
+incomplete generations and four with no surviving suggestion or question.
+Manual review of every case found eight adequate bounded suggestions and 45
+accepted responses with relevance or grounding concerns. These qualitative
+assessments are not a release score or an unseen-history evaluation. Common
+problems include generic advice that does not answer the question, assumed
+goal progress, weak rest-day handling and unsolicited health-related cautions.
+The model remains provisional; structural acceptance is not coaching approval.
 
 Small raw models produced false personal facts and unsuitable advice. Protected
 format checks, app-owned statistics and capability boundaries reduce specific
@@ -52,6 +73,23 @@ No physical iPhone timing, certified peak memory, sustained battery/heat or
 repeated lifecycle result exists yet. Simulator timing is not phone timing.
 The standalone evaluation app's earlier no-result smoke remains retained as a
 failed attempt; a later main-tracker integration smoke passed separately.
+
+## Backup and recovery behavior
+
+- A JSON import is decoded and validated before a replacement confirmation is
+  offered. Confirming it writes atomically; a rejected import or failed write
+  does not install partial data. Cancelling does not replace records.
+- “Restore previous save” restores only the immediately preceding committed
+  version. It validates that snapshot while holding the write transaction. The
+  replaced payload becomes the recovery row until the next successful save;
+  an unreadable payload is not offered as a valid recovery candidate. This is
+  one-level recovery, not a dated archive. Ordinary saves, including timer
+  settlement, advance it. Export backups separately for long-term retention.
+- When current data cannot be decoded, the screen offers retry, previous-save
+  recovery (only if valid), and backup import. No restore is automatic and no
+  blank-state reset is performed. If SQLite itself cannot be opened, retry must
+  succeed before any restore can write; physical-file corruption repair is not
+  implemented. Backups contain profile/activity data and should be kept private.
 
 ## Evidence locations
 

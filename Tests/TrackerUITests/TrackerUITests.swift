@@ -1,6 +1,61 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    // Prepare only the disposable fixture with scripts/prepare_recovery_ui_fixture.py.
+    func testFailedLoadRecoveryPreservesDataUntilConfirmed() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-recovery-fixture"]
+        app.launch()
+        let failedLoad = app.staticTexts["Saved data could not be opened"]
+        XCTAssertTrue(failedLoad.waitForExistence(timeout: 10))
+        app.buttons["Try again"].tap()
+        XCTAssertTrue(failedLoad.exists, "Retry must not reset unreadable data")
+        app.buttons["Restore backup"].tap()
+        let pickerCancel = app.buttons["Cancel"].firstMatch
+        XCTAssertTrue(pickerCancel.waitForExistence(timeout: 15))
+        pickerCancel.tap()
+        XCTAssertTrue(failedLoad.exists, "Cancelling the file picker must not replace data")
+        app.buttons["Restore previous save"].tap()
+        let confirmation = app.sheets.firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        cancelRecovery(confirmation, in: app)
+        XCTAssertTrue(failedLoad.exists, "Cancelling recovery must leave failed data untouched")
+        app.buttons["Restore previous save"].tap()
+        confirmation.buttons["Restore previous save"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, "Recovered fixture")
+        app.swipeUp()
+        XCTAssertFalse(app.buttons["Restore previous save"].isEnabled,
+                       "The replaced unreadable payload must not become a valid restore candidate")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+    func testPreviousSaveRecoveryConfirmsAndPersistsAcrossRelaunch() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let before = "Before " + String(UUID().uuidString.prefix(6))
+        let after = "After " + String(UUID().uuidString.prefix(6))
+        for nickname in [before, after] {
+            app.buttons["Settings"].tap()
+            replace(app.textFields["Username"], with: nickname)
+            app.navigationBars.buttons["Save"].tap()
+        }
+        app.buttons["Settings"].tap(); app.swipeUp()
+        app.buttons["Restore previous save"].tap()
+        let confirmation = app.sheets.firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        cancelRecovery(confirmation, in: app)
+        app.swipeDown()
+        XCTAssertEqual(app.textFields["Username"].value as? String, after,
+                       "Cancelling recovery must not change saved records")
+        app.swipeUp(); app.buttons["Restore previous save"].tap()
+        confirmation.buttons["Restore previous save"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, before)
+        app.navigationBars.buttons["Cancel"].tap()
+    }
     func testProfileDraftSurvivesSettingsNavigationAndRelaunch() throws {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
@@ -108,6 +163,15 @@ final class TrackerUITests: XCTestCase {
         attachment.name = "Persisted focus session on iPhone 13 simulator"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+    private func cancelRecovery(_ confirmation: XCUIElement, in app: XCUIApplication) {
+        if confirmation.buttons["Cancel"].exists {
+            confirmation.buttons["Cancel"].tap()
+        } else {
+            // Compact popovers expose an outside-dismiss region, not Cancel.
+            app.otherElements["PopoverDismissRegion"].tap()
+        }
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 5))
     }
     private func replace(_ field: XCUIElement, with text: String) {
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap()
