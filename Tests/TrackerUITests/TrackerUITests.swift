@@ -1,6 +1,28 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    func testCoachCompletedPeriodEvidencePreviewUsesSavedComparisonWithoutInference() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--ui-testing-comparison-fixture"]; app.launch()
+        app.tabBars.buttons["Coach"].tap()
+        app.segmentedControls.buttons["Completed periods"].tap()
+        app.buttons["App-calculated evidence"].tap()
+        let recent = app.staticTexts["coach-evidence-recent_period"]
+        if !recent.waitForExistence(timeout: 5) { app.swipeUp() }
+        XCTAssertTrue(recent.waitForExistence(timeout: 5))
+        XCTAssertTrue(recent.label.contains("completions: 1 out of 7"))
+        XCTAssertTrue(recent.label.contains("workouts: 1; workout minutes: 30"))
+        XCTAssertTrue(recent.label.contains("work-focus minutes: 35"))
+        let previous = app.staticTexts["coach-evidence-previous_period"]
+        XCTAssertTrue(previous.exists)
+        XCTAssertTrue(previous.label.contains("workout minutes: 45"))
+        XCTAssertTrue(previous.label.contains("work-focus minutes: 25"))
+        app.swipeDown(); app.swipeDown()
+        app.segmentedControls.buttons["Snapshot"].tap()
+        XCTAssertTrue(app.staticTexts["coach-evidence-comparison_limit"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["coach-evidence-previous_period"].exists)
+        XCTAssertFalse(app.buttons["Cancel"].exists, "Preview selection must not start inference")
+    }
     // Prepare a new exclusive synthetic comparison fixture before this test.
     func testRecordedPeriodComparisonDisplaysNonzeroSavedTotals() throws {
         continueAfterFailure = false

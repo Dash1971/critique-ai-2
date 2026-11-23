@@ -21,7 +21,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Main coach: simulator build and native pipeline smoke passed using saved
   tracker test records. Checked output and two conversation messages persisted.
   Raw output is not presented as checked advice. The model is not release-approved.
-- Current complete-core source passes 44 tests. A build is not a substitute for
+- Current complete-core source passes 49 tests. A build is not a substitute for
   exercising every feature or testing physical-device resources.
 - Previous-save UI recovery: cancellation preserves the latest profile;
   confirming restores the preceding profile and persists across relaunch. The
@@ -113,8 +113,9 @@ and verifies both refreshed ranges and readable scope text without data writes.
 The screen also listens for significant-time and timezone changes. Two captured
 normal-font dark-portrait screens were visually checked for legibility/clipping;
 Large text, VoiceOver and real midnight/timezone event delivery remain open.
-The coach is not connected to this API; its existing no-comparison limitation
-remains in force.
+The snapshot coach mode retains its no-comparison limitation. A separate
+completed-period coach input path is implemented; its native/UI gates
+are tracked below.
 
 A separate nonzero historical comparison fixture is prepared exclusively by
 `scripts/prepare_comparison_ui_fixture.py --device SIMULATOR_UUID`; the matching
@@ -126,6 +127,33 @@ workout minutes and clipped focus minutes. Today-only entries were excluded;
 a crossing focus session was divided between adjacent windows. All four
 synthetic stores retained identical saved-payload hashes. The original
 accessibility-label probe failure remains retained with the local evidence.
+
+## Completed-period coach facts
+
+`AppState.coachComparisonFactContext` prepares four app-owned facts from the
+same completed-window calculation: scope, previous period, recent period and
+comparison limits. It does not mix in today-inclusive snapshot statistics.
+Titles, notes, profile data and other activity domains are excluded. Missing
+records/current-schedule/DST caveats remain explicit; no improvement score or
+trend diagnosis is inferred. Nonfinite totals are rejected.
+
+Five added regressions passed with the full 49-test suite: exact dates/counts
+and today exclusion, clipped focus, bounded privacy-preserving deterministic
+input, unchanged-contract compatibility, snapshot isolation, invalid data and
+DST metadata. The main coach now has explicit Snapshot/Completed periods
+selection and an app-calculated evidence preview using the same preparation
+path as requests. Changing the window or mode clears the prior response. The
+focused no-inference simulator regression passed completed-period saved totals
+and return to snapshot-only facts. It did not request generation. All four
+synthetic store payloads remained unchanged. The earlier bounded interruption
+is retained separately. Two synthetic host requests fit the pinned native
+tokenizer budget (686 and 692 prompt tokens, each with a 256-token output
+reserve). The unchanged Swift contract accepted both after discarding one
+invalid action. Semantic review found both generic or insufficiently responsive
+to the supplied evidence. This is not a quality upgrade, held-out evaluation
+or main-app generation pass. Active-request
+cancellation on evidence changes, broader input fit and physical-device acceptance
+remain open. The fixture exporter supports `--completed-periods` for these inputs.
 
 ## Workout coaching evidence
 

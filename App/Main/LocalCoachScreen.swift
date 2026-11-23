@@ -158,6 +158,17 @@ private final class ModelWorker: @unchecked Sendable {
     }
 }
 
+private enum CoachEvidenceMode: String, CaseIterable {
+    case snapshot, completedPeriods = "completed_periods"
+    var title: String { self == .snapshot ? "Snapshot" : "Completed periods" }
+    func context(_ state: AppState, days: Int) throws -> CoachFactContext {
+        switch self {
+        case .snapshot: return try state.coachFactContext(days: days)
+        case .completedPeriods: return try state.coachComparisonFactContext(days: days)
+        }
+    }
+}
+
 @MainActor private final class LocalCoachModel: ObservableObject {
     @Published var question = "Suggest two small improvements based only on my recorded habits."
     @Published var answer = ""
@@ -171,6 +182,7 @@ private final class ModelWorker: @unchecked Sendable {
     private var runID = UUID()
     private var firstDeliveredSeconds: Double?
     private var cancelledByUser = false
+    private var activeEvidenceMode = CoachEvidenceMode.snapshot
     private func smokeOutcome(_ outcome: String, error: Error? = nil) {
         guard ProcessInfo.processInfo.arguments.contains("--local-coach-smoke") else { return }
         var record: [String: Any] = ["outcome": outcome, "model_sha256": modelSpec?.sha256 ?? "unavailable",
@@ -179,12 +191,13 @@ private final class ModelWorker: @unchecked Sendable {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("local-coach-smoke-outcome.json")
         if let data = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]) { try? data.write(to: url, options: .atomic) }
     }
-    func run(state: AppState, days: Int, onAccepted: @escaping (String, String) -> Bool) {
+    func run(state: AppState, days: Int, mode: CoachEvidenceMode, onAccepted: @escaping (String, String) -> Bool) {
         guard !running, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         guard question.count <= 4000 else { status = "Please shorten your question so it fits the on-device context."; return }
         let preparedContext: CoachFactContext
-        do { preparedContext = try state.coachFactContext(days: days) } catch { status = error.localizedDescription; return }
+        do { preparedContext = try mode.context(state, days: days) } catch { status = error.localizedDescription; return }
         let asked = question
+        activeEvidenceMode = mode
         idleTask?.cancel(); running = true; answer = ""; status = "Verifying/loading local model…"; exportURL = nil
         firstDeliveredSeconds = nil
         cancelledByUser = false
@@ -226,6 +239,10 @@ private final class ModelWorker: @unchecked Sendable {
             }
         })
     }
+    func evidenceChanged(_ message: String) {
+        answer = ""
+        if running { cancel() } else { status = message }
+    }
     func cancel() { cancelledByUser = true; worker.cancel(); if running { status = "Cancelling…" } }
     func release() {
         cancel()
@@ -250,6 +267,7 @@ private final class ModelWorker: @unchecked Sendable {
             "runtime_source_revision": "44d50873b56b568c28ef2ad8d6445069feaa9fbd",
             "backend_requested": backendRequested,
             "context_tokens": 2048, "max_output_tokens": 256, "constrained_json": m.constrained_json,
+            "evidence_mode": activeEvidenceMode.rawValue,
             "load_seconds": m.load_seconds, "first_token_seconds": m.first_token_seconds,
             "first_token_excludes_model_load_and_integrity_check": true,
             "first_checked_answer_seconds_from_request": firstDeliveredSeconds.map { $0 as Any } ?? NSNull(),
@@ -280,16 +298,32 @@ struct LocalCoachScreen: View {
     @StateObject private var model = LocalCoachModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var days = 7
+    @State private var mode = CoachEvidenceMode.snapshot
+    @State private var previewExpanded = false
     @State private var smokeStarted = false
     var body: some View {
         Form {
             Section {
                 Text("Offline activity coach").font(.headline)
                 Text("Uses your selected saved records. Coaching runs on this device; no activity data is sent to an AI provider. This coach is still experimental.").font(.caption).foregroundStyle(.secondary)
+                Picker("Evidence mode", selection: $mode) {
+                    ForEach(CoachEvidenceMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).disabled(model.running)
+                Text(mode == .snapshot ? "Snapshot includes today up to now." : "Completed periods compare two adjacent windows and exclude today.").font(.caption)
                 Picker("Record window", selection: $days) {
                     Text("7 days").tag(7); Text("14 days").tag(14); Text("30 days").tag(30)
                 }.disabled(model.running)
                 Text("Individual detail is bounded to fit the local model. Missing entries are not proof that an activity did not happen.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
+                DisclosureGroup("App-calculated evidence", isExpanded: $previewExpanded) {
+                    Text("Calculated from saved records, not a generated coach response.").font(.caption)
+                    if let state = store.state, let context = try? mode.context(state, days: days) {
+                        ForEach(context.facts) { fact in
+                            Text(fact.text).font(.caption).textSelection(.enabled).accessibilityIdentifier("coach-evidence-" + fact.id)
+                        }
+                    } else { Text("Evidence is unavailable. No records have been changed.") }
+                }
             }
             Section("Ask about your activities") {
                 TextField("Question", text: $model.question, axis: .vertical).lineLimit(2...5).disabled(model.running)
@@ -318,7 +352,8 @@ struct LocalCoachScreen: View {
                 }
             }
         }.navigationTitle("Coach")
-            .onChange(of: days) { _, _ in model.answer = ""; model.status = "Record window changed. Ask again for an updated snapshot." }
+            .onChange(of: days) { _, _ in model.evidenceChanged("Record window changed. Ask again for updated coaching.") }
+            .onChange(of: mode) { _, _ in model.evidenceChanged("Evidence mode changed. Ask again for updated coaching.") }
             .onChange(of: store.state) { old, new in
                 guard let old, let new else { return }
                 if old.habits != new.habits || old.workouts != new.workouts || old.goals != new.goals || old.meals != new.meals || old.water != new.water || old.focus != new.focus {
@@ -328,6 +363,7 @@ struct LocalCoachScreen: View {
             }
             .onChange(of: scenePhase) { _, phase in if phase != .active { model.release() } else { runSmokeIfReady() } }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in model.release() }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in model.evidenceChanged("Calendar time changed. Ask again for updated coaching.") }
             .task { runSmokeIfReady() }
     }
     private func runSmokeIfReady() {
@@ -336,7 +372,7 @@ struct LocalCoachScreen: View {
     }
     private func request() {
         guard let state = store.state else { return }
-        model.run(state: state, days: days) { question, response in
+        model.run(state: state, days: days, mode: mode) { question, response in
             store.change {
                 $0.coach.append(CoachMessage(role: "user", content: question))
                 $0.coach.append(CoachMessage(role: "assistant", content: response))
