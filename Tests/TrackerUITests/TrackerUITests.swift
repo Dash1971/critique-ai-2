@@ -1,6 +1,42 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    // Use an isolated focus fixture and preserve its existing session history.
+    func testFocusDeadlineBackgroundSettlementAndRelaunchAreExactlyOnce() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-focus-lifecycle-fixture"]
+        app.launch()
+        func openFocus() {
+            app.tabBars.buttons["Activity"].tap()
+            app.buttons["Focus and timers"].tap()
+        }
+        func workRows() -> XCUIElementQuery {
+            app.cells.containing(NSPredicate(format: "label BEGINSWITH %@", "Work ·"))
+        }
+        openFocus()
+        XCTAssertTrue(app.buttons["Start timer"].exists, "Do not replace an unfinished saved timer")
+        let baseline = workRows().count
+        replace(app.textFields["Minutes"], with: "0.2")
+        app.buttons["Start timer"].tap()
+        XCTAssertTrue(app.buttons["Cancel without saving"].waitForExistence(timeout: 5))
+        XCUIDevice.shared.press(.home)
+        let deadlineElapsed = expectation(description: "Saved timer deadline passes while backgrounded")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { deadlineElapsed.fulfill() }
+        wait(for: [deadlineElapsed], timeout: 20)
+        app.activate()
+        XCTAssertTrue(app.buttons["Start timer"].waitForExistence(timeout: 8))
+        XCTAssertEqual(workRows().count, baseline + 1)
+        app.terminate(); app.launch(); openFocus()
+        XCTAssertTrue(app.buttons["Start timer"].waitForExistence(timeout: 5))
+        XCTAssertEqual(workRows().count, baseline + 1, "Relaunch must not settle the same saved deadline twice")
+        replace(app.textFields["Minutes"], with: "2")
+        app.buttons["Start timer"].tap()
+        app.buttons["Cancel without saving"].tap()
+        XCTAssertTrue(app.buttons["Start timer"].waitForExistence(timeout: 5))
+        app.terminate(); app.launch(); openFocus()
+        XCTAssertEqual(workRows().count, baseline + 1, "Cancelling an incomplete timer must not create another session")
+    }
     func testCoachCompletedPeriodEvidencePreviewUsesSavedComparisonWithoutInference() throws {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing", "--ui-testing-comparison-fixture"]; app.launch()

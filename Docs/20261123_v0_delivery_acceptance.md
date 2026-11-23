@@ -59,7 +59,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Workouts | Routines, weekdays, exercises/sets/reps/kg/duration, history/chart/PR | Full routine/edit/delete and timer interoperability checks |
 | Nutrition | Editable custom foods/meals/macros/water and day history | Complete CRUD/category/history UI coverage |
 | Goals | Cadences, target/progress/deadline, history/completion | Deadline/cadence/edit/delete UI coverage and broader history presentation |
-| Focus/calendar | Persistent work/break/rest timers, session history, dated activity | Background/lifecycle boundaries and expanded date/layout checks |
+| Focus/calendar | Persistent timers, session history, dated activity; Work deadline/background/relaunch/cancellation simulator regression | Break/rest, long-duration clock changes, real-device lifecycle and expanded date/layout checks |
 | Screen time | Clearly marked manual journal | Automatic collection/reporting requires native permission/entitlement integration; not implemented |
 | Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore and backup-file import; valid JSON import confirmation/cancellation/relaunch, malformed JSON rejection and native export bytes verified | Photo, newer-schema/semantic-invalid backup UI and theme validation |
 | Notifications | Per-type settings, permission request, real local queue, foreground delegate | Permission/delivery/deadline/streak/timer behavior on real devices |
@@ -173,6 +173,22 @@ Manual review found one adequate planning response and two relevance/grounding
 concerns. These are input-path checks, not a quality upgrade or phone benchmark.
 Maximum combined-input fit and main-app integration remain open. Earlier
 60-case findings used the prior input and are preserved separately.
+
+## Focus lifecycle verification
+
+The focused simulator regression uses a dedicated UI-test store and preserves
+its existing session history. A 12-second Work timer crosses its deadline while
+the app is backgrounded. Reactivation records one completed session; relaunch
+does not duplicate it. Cancelling a subsequent incomplete timer creates no
+session, including after another relaunch. The UI regression passed, and a
+read-only saved-state check confirmed exactly one new 12-second Work record,
+no active timer, and unchanged prior sessions. Four other synthetic stores
+retained identical payload hashes. The earlier broad accessibility-count failure
+is retained separately; row assertions now use cells, not duplicated text nodes.
+
+This does not certify OS suspension timing, notification delivery, long-duration
+clock changes or physical-device background behavior. Break/rest-specific UI
+cases and broader timer/workout interoperability remain open.
 
 ## Backup and recovery behavior
 
