@@ -64,4 +64,3 @@ The iOS XCFramework must be rebuilt before this grammar change can run in the na
 ## Remaining work
 
 Priorities are the missing-baseline selection failure, practical plan quality, evidence omissions and maximum combined-context fit, independently curated relevance tests, and physical iPhone 13 acceptance. Conversation history is saved for reference but is not included in subsequent inference; the UI now states this limitation. No cloud provider, API billing or server fallback has been added.
-
