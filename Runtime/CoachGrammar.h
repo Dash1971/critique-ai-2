@@ -19,13 +19,17 @@ inline std::string cr_coach_grammar(const char * snapshot) {
         if (!ids.empty()) ids += " | ";
         ids += common_json(common_json(id).dump()).dump();
     }
-    return std::string(R"GBNF(root ::= ws "{" ws "\"fact_ids\"" ws ":" ws "[" ws fact-id (ws "," ws fact-id){0,2} ws "]" ws "," ws "\"suggestions\"" ws ":" ws "[" ws action (ws "," ws action)? ws "]" ws "," ws "\"question\"" ws ":" ws "null" ws "}" ws
+    return std::string(R"GBNF(root ::= ws "{" ws response ws "}" ws
+response ::= "\"response_kind\"" ws ":" ws "\"facts\"" ws "," ws facts ws "," ws "\"suggestions\"" ws ":" ws "[]" ws "," ws "\"question\"" ws ":" ws "null" | "\"response_kind\"" ws ":" ws "\"plan\"" ws "," ws facts ws "," ws "\"suggestions\"" ws ":" ws "[" ws action (ws "," ws action)? ws "]" ws "," ws "\"question\"" ws ":" ws "null" | "\"response_kind\"" ws ":" ws "\"clarification\"" ws "," ws facts ws "," ws "\"suggestions\"" ws ":" ws "[]" ws "," ws "\"question\"" ws ":" ws question-text
+facts ::= "\"fact_ids\"" ws ":" ws "[" ws fact-id (ws "," ws fact-id){0,2} ws "]"
+question-text ::= "\"" question-char{1,159} "?\""
+question-char ::= [^"\\?\x00-\x1F] | "\\" (["\\/bfnrt] | "u" [0-9a-fA-F]{4})
 action ::= "{" ws "\"kind\"" ws ":" ws kind ws "," ws "\"text\"" ws ":" ws action-text (ws "," ws "\"proposed_minutes\"" ws ":" ws minutes)? ws "}"
 action-text ::= "\"" verb " " char{1,160} "\""
 verb ::= "Consider" | "Try" | "Plan" | "Practice" | "Choose" | "Review" | "Pause" | "Seek" | "Ask" | "Build" | "Keep" | "Focus" | "Create" | "Set" | "Reflect"
 kind ::= "\"practice\"" | "\"planning\"" | "\"reflection\"" | "\"recovery\"" | "\"seek_help\""
 minutes ::= [1-9] | [1-9] [0-9] | "1" [0-7] [0-9] | "180"
 char ::= [^"\\\x00-\x1F] | "\\" (["\\/bfnrt] | "u" [0-9a-fA-F]{4})
-ws ::= [ \t\n\r]*
+ws ::= " "?
 fact-id ::= )GBNF") + ids + "\n";
 }

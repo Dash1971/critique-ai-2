@@ -14,6 +14,13 @@ Development status: incomplete. Social features, cloud synchronization, desktop
 support and automatic screen-time collection are not implemented. Model quality
 and physical-device performance remain under evaluation.
 
+## Current local-coach work
+
+The record-answer protocol now separates factual reviews, requested activity plans
+and clarifying questions. See the [takeover checkpoint](Docs/local-coach-record-answers.md)
+for observed before/after results, reproducible checks and remaining failures.
+The model is still evaluation-only and iPhone 13 acceptance is outstanding.
+
 ## Code structure
 
 - `Sources/CritiqueCore/`: Swift package for data models, SQLite persistence,
@@ -87,6 +94,13 @@ The runtime archive SHA-256 is
 The checked-in Xcode project contains both app targets. Project generators are
 optional and refuse to overwrite existing projects. The commands above build
 an unsigned iOS app; signing and distribution require separate configuration.
+
+## TestFlight prototype handoff
+
+See [the OpenClaw build and TestFlight handoff](Docs/testflight-prototype-handoff.md)
+for the exact app target, external dependencies, signing requirements, archive
+commands and remaining verification. A repository checkout alone is not a
+signed or uploaded TestFlight build.
 
 ## Evaluation and privacy
 
