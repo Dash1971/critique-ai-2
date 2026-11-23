@@ -30,7 +30,24 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Failed-load UI recovery: a separate corrupt-data fixture passed retry without
   reset, backup-picker cancellation, recovery cancellation, explicit recovery,
   restored profile across relaunch and disabling an unreadable recovery row.
-  Successful file import/export and invalid-backup UI handling remain unverified.
+- Failed-load backup-file import: a separate unreadable-store fixture passed
+  native JSON selection, cancellation preserving the failed state across
+  relaunch, confirmed replacement and imported-profile relaunch persistence.
+  Read-only checks confirmed the earlier synthetic stores and export survived.
+- Backup export cancellation: the native export picker opens from Settings;
+  cancellation shows no save-error alert and preserves the saved profile across
+  relaunch. The focused simulator regression passed. No file was exported.
+- Valid backup import: native JSON selection from Settings, cancellation of the
+  replacement confirmation without changing the saved profile, confirmed import
+  and the imported profile after relaunch passed a focused simulator regression.
+- Malformed JSON import: native file selection shows a validation-error alert,
+  offers no replacement confirmation and preserves the saved profile across
+  relaunch. The focused simulator regression passed. Newer-schema and
+  semantically invalid backup UI cases are not covered by this check.
+- Native JSON export: a new file saved through the native picker matched the
+  isolated synthetic SQLite payload byte-for-byte, including schema, profile
+  and collection fields. The focused UI regression and separate read-only file
+  verifier passed. This is a synthetic-state check, not physical-device approval.
 
 ## Implementation and outstanding gates
 
@@ -44,7 +61,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Goals | Cadences, target/progress/deadline, history/completion | Deadline/cadence/edit/delete UI coverage and broader history presentation |
 | Focus/calendar | Persistent work/break/rest timers, session history, dated activity | Background/lifecycle boundaries and expanded date/layout checks |
 | Screen time | Clearly marked manual journal | Automatic collection/reporting requires native permission/entitlement integration; not implemented |
-| Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore, cancellation and relaunch verified | Photo, successful file-picker import/export, invalid-backup UI and theme validation |
+| Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore and backup-file import; valid JSON import confirmation/cancellation/relaunch, malformed JSON rejection and native export bytes verified | Photo, newer-schema/semantic-invalid backup UI and theme validation |
 | Notifications | Per-type settings, permission request, real local queue, foreground delegate | Permission/delivery/deadline/streak/timer behavior on real devices |
 | AI coach | Actual bounded saved data, checked facts/proposals, history, local diagnostics | Full quality/held-out corpus, missing workout detail/long-term comparison, physical resource and lifecycle gates |
 | Friends/challenges | No fake profiles, scores or decorative controls | Optional social/privacy/sharing and weekly leaderboard implementation/integration |

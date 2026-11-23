@@ -20,10 +20,13 @@ import CritiqueCore
             // UI checks use an independent persistent store and never reset or
             // open the normal installation's data.
             let testing = CommandLine.arguments.contains("--ui-testing")
-            let filename = testing
-                ? (CommandLine.arguments.contains("--ui-testing-recovery-fixture")
-                    ? "UITest-recovery-state.sqlite" : "UITest-state.sqlite")
-                : "state.sqlite"
+            let filename: String
+            if !testing { filename = "state.sqlite" }
+            else if CommandLine.arguments.contains("--ui-testing-backup-import-fixture") {
+                filename = "UITest-backup-import-state.sqlite"
+            } else if CommandLine.arguments.contains("--ui-testing-recovery-fixture") {
+                filename = "UITest-recovery-state.sqlite"
+            } else { filename = "UITest-state.sqlite" }
             let database = try Database(url: directory.appendingPathComponent("CritiqueAI2/\(filename)"))
             // Retain an opened database even if decoding its current row fails,
             // so a validated snapshot or backup can still be restored.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create a disposable failed-load fixture in an installed simulator app.
 
-Run before testFailedLoadRecoveryPreservesDataUntilConfirmed. Never opens the
+Run before the matching isolated failed-load UI test. Never opens the
 normal database or overwrites an existing fixture. Keep the application stopped
 while preparing it. Generated data remains in the simulator, not the repository.
 """
@@ -15,6 +15,8 @@ import subprocess
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--device', required=True, help='Booted simulator UUID')
+    parser.add_argument('--scenario', choices=['previous-save', 'backup-import'],
+                        default='previous-save')
     args = parser.parse_args()
     devices = json.loads(subprocess.check_output(
         ['xcrun', 'simctl', 'list', 'devices', 'booted', '--json'], text=True))
@@ -23,7 +25,9 @@ def main():
     container = Path(subprocess.check_output([
         'xcrun', 'simctl', 'get_app_container', args.device,
         'com.dash1971.critiqueai2', 'data'], text=True).strip())
-    target = container / 'Library/Application Support/CritiqueAI2/UITest-recovery-state.sqlite'
+    filename = ('UITest-backup-import-state.sqlite' if args.scenario == 'backup-import'
+                else 'UITest-recovery-state.sqlite')
+    target = container / 'Library/Application Support/CritiqueAI2' / filename
     target.parent.mkdir(parents=True, exist_ok=True)
     # Exclusive creation: a prior test's database and evidence must survive.
     try:

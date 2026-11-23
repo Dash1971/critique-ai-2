@@ -1,6 +1,148 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    // Prepare a new exclusive --scenario backup-import fixture, never normal data.
+    func testFailedLoadBackupImportRequiresConfirmationAndPersists() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-backup-import-fixture"]
+        app.launch()
+        let failedLoad = app.staticTexts["Saved data could not be opened"]
+        XCTAssertTrue(failedLoad.waitForExistence(timeout: 10))
+        selectBackupFixture("Critique Valid Backup", in: app)
+        let confirmation = app.sheets.firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        cancelRecovery(confirmation, in: app)
+        XCTAssertTrue(failedLoad.exists, "Cancelling a valid backup must not replace unreadable data")
+        app.terminate(); app.launch()
+        XCTAssertTrue(failedLoad.waitForExistence(timeout: 10),
+                      "Cancelled import must leave the original failed-load state across relaunch")
+        selectBackupFixture("Critique Valid Backup", in: app)
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Replace current data"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, "Imported fixture")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+    func testBackupExportWritesNativeJSONDocument() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let nickname = "Export " + String(UUID().uuidString.prefix(6))
+        app.buttons["Settings"].tap()
+        replace(app.textFields["Username"], with: nickname)
+        app.navigationBars.buttons["Save"].tap()
+        app.buttons["Settings"].tap(); app.swipeUp()
+        app.buttons["Export backup"].tap()
+        XCTAssertTrue(app.searchFields["Search"].firstMatch.waitForExistence(timeout: 20), app.debugDescription)
+        capturePicker("export-destination", in: app)
+        let folder = app.cells["CritiqueUITestBackups, Folder"]
+        if folder.waitForExistence(timeout: 5) {
+            folder.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+        }
+        let pickerBar = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
+        XCTAssertTrue(pickerBar.buttons["CritiqueUITestBackups, Actions Menu"].waitForExistence(timeout: 5), app.debugDescription)
+        let export = pickerBar.buttons["Save"]
+        XCTAssertTrue(export.waitForExistence(timeout: 5), app.debugDescription)
+        export.tap()
+        XCTAssertTrue(export.waitForNonExistence(timeout: 15))
+        XCTAssertFalse(app.alerts["Changes were not saved"].exists)
+        print("BACKUP_EXPORT_EXPECTED_PROFILE|\(nickname)")
+        app.terminate()
+    }
+    func testInvalidBackupShowsErrorWithoutReplacingSavedData() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let nickname = "Retain " + String(UUID().uuidString.prefix(6))
+        app.buttons["Settings"].tap()
+        replace(app.textFields["Username"], with: nickname)
+        app.navigationBars.buttons["Save"].tap()
+        app.buttons["Settings"].tap(); app.swipeUp()
+        selectBackupFixture("Critique Invalid Backup", in: app)
+        let error = app.alerts["Changes were not saved"]
+        XCTAssertTrue(error.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.buttons["Replace current data"].exists,
+                       "A malformed backup must not offer a replacement confirmation")
+        error.buttons["OK"].tap()
+        app.swipeDown()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname)
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname,
+                       "Rejecting a malformed backup must leave the persisted profile unchanged")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+    private func capturePicker(_ label: String, in app: XCUIApplication) {
+        let hierarchy = app.debugDescription
+        print("BACKUP_PICKER_\(label)\n\(hierarchy)\nEND_BACKUP_PICKER_\(label)")
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "backup-picker-\(label)"; attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+    // Prepare only synthetic Files fixtures with scripts/prepare_backup_ui_fixtures.py.
+    func testValidBackupImportRequiresConfirmationAndPersistsAcrossRelaunch() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let nickname = "Keep " + String(UUID().uuidString.prefix(6))
+        app.buttons["Settings"].tap()
+        replace(app.textFields["Username"], with: nickname)
+        app.navigationBars.buttons["Save"].tap()
+        app.buttons["Settings"].tap(); app.swipeUp()
+        selectBackupFixture("Critique Valid Backup", in: app)
+        let confirmation = app.sheets.firstMatch
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        cancelRecovery(confirmation, in: app)
+        app.swipeDown()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname,
+                       "Selecting a valid backup must not replace data before confirmation")
+        app.swipeUp(); selectBackupFixture("Critique Valid Backup", in: app)
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        confirmation.buttons["Replace current data"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 10))
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, "Imported fixture")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+    private func selectBackupFixture(_ name: String, in app: XCUIApplication) {
+        app.buttons["Restore backup"].tap()
+        // Settings also has Cancel. Wait for a picker-owned control before
+        // querying its asynchronously attached accessibility subtree.
+        XCTAssertTrue(app.searchFields["Search"].firstMatch.waitForExistence(timeout: 20), app.debugDescription)
+        let file = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+        if !file.waitForExistence(timeout: 3) {
+            let folder = app.cells["CritiqueUITestBackups, Folder"]
+            if !folder.waitForExistence(timeout: 15) {
+                let browse = app.buttons["Browse"].firstMatch
+                if browse.exists { browse.tap() }
+                let local = app.staticTexts["On My iPhone"].firstMatch
+                XCTAssertTrue(local.waitForExistence(timeout: 5), app.debugDescription); local.tap()
+            }
+            XCTAssertTrue(folder.waitForExistence(timeout: 5))
+            folder.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+        }
+        XCTAssertTrue(file.waitForExistence(timeout: 5), app.debugDescription)
+        file.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
+    }
+    func testBackupExportCancellationPreservesSavedProfile() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        let nickname = "Backup " + String(UUID().uuidString.prefix(6))
+        app.buttons["Settings"].tap()
+        replace(app.textFields["Username"], with: nickname)
+        app.navigationBars.buttons["Save"].tap()
+        app.buttons["Settings"].tap(); app.swipeUp()
+        app.buttons["Export backup"].tap()
+        let cancel = app.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 15))
+        cancel.tap()
+        XCTAssertTrue(app.buttons["Export backup"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.alerts["Changes were not saved"].exists,
+                       "Cancelling an export is not a failed data write")
+        app.navigationBars.buttons["Cancel"].tap()
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname,
+                       "Cancelling an export must preserve saved data across relaunch")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
     // Prepare only the disposable fixture with scripts/prepare_recovery_ui_fixture.py.
     func testFailedLoadRecoveryPreservesDataUntilConfirmed() throws {
         continueAfterFailure = false
