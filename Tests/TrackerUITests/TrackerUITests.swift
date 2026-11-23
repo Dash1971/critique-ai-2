@@ -1,6 +1,55 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    func testGoalDeadlinePickerCancellationAndRelaunchPersistence() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-goal-workflow-fixture"]
+        let title = "Deadline workflow " + UUID().uuidString.prefix(6)
+        func cell() -> XCUIElement { app.cells.containing(.staticText, identifier: String(title)).firstMatch }
+        func openGoals() { app.tabBars.buttons["Goals"].tap() }
+        app.launch(); openGoals(); app.buttons["Create goal"].tap()
+        app.textFields["Goal title"].tap(); app.textFields["Goal title"].typeText(String(title))
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(cell().waitForExistence(timeout: 5))
+        cell().buttons["Edit"].tap()
+        let picker = app.buttons["Date Picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        let original = try XCTUnwrap(picker.value as? String)
+        func chooseDay(_ day: Int) {
+            picker.tap()
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "Native goal deadline calendar"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+            let defaultMonth = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
+            let month = DateFormatter(); month.locale = Locale(identifier: "en_US"); month.dateFormat = "MMMM"
+            let labelPart = month.string(from: defaultMonth) + " " + String(day)
+            let dated = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", labelPart)).firstMatch
+            let numbered = app.buttons[String(day)]
+            let target = dated.exists ? dated : numbered
+            XCTAssertTrue(target.waitForExistence(timeout: 5), "Expected a selectable day in the native deadline calendar")
+            target.tap()
+            let dismissRegion = app.buttons["PopoverDismissRegion"]
+            XCTAssertTrue(dismissRegion.waitForExistence(timeout: 5))
+            dismissRegion.tap()
+            let pickerReady = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: picker)
+            XCTAssertEqual(XCTWaiter.wait(for: [pickerReady], timeout: 5), .completed,
+                           "Deadline value must be read only after the native calendar is dismissed")
+        }
+        chooseDay(15)
+        let changed = try XCTUnwrap(picker.value as? String)
+        XCTAssertNotEqual(changed, original)
+        app.navigationBars.buttons["Cancel"].tap()
+        cell().buttons["Edit"].tap()
+        XCTAssertEqual(picker.value as? String, original, "Cancel must not persist a changed deadline")
+        chooseDay(15)
+        XCTAssertEqual(picker.value as? String, changed)
+        app.navigationBars.buttons["Save"].tap()
+        app.terminate(); app.launch(); openGoals()
+        cell().buttons["Edit"].tap()
+        XCTAssertEqual(picker.value as? String, changed, "Saved deadline must survive relaunch")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+
     func testGoalEditCadenceHistoryAndConfirmedDeletionPersistWithoutReset() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
