@@ -21,7 +21,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Main coach: simulator build and native pipeline smoke passed using saved
   tracker test records. Checked output and two conversation messages persisted.
   Raw output is not presented as checked advice. The model is not release-approved.
-- Current complete-core source passes 49 tests. A build is not a substitute for
+- Current complete-core source passes 52 tests. A build is not a substitute for
   exercising every feature or testing physical-device resources.
 - Previous-save UI recovery: cancellation preserves the latest profile;
   confirming restores the preceding profile and persists across relaunch. The
@@ -173,6 +173,16 @@ Manual review found one adequate planning response and two relevance/grounding
 concerns. These are input-path checks, not a quality upgrade or phone benchmark.
 Maximum combined-input fit and main-app integration remain open. Earlier
 60-case findings used the prior input and are preserved separately.
+
+## Goal progress and storage
+
+Goal progress fractions use the actual positive target, including targets below
+one, and clamp to the display range. A completed fractional target no longer
+shows a partially filled progress bar. Three core regressions cover fractional
+targets, edited cadence/deadline/target persistence with unchanged history and
+previous-save recovery, and completion after a downward correction and later
+target crossing. All 52 core tests pass. Goal editor, date-picker, cadence-picker
+and confirmed-deletion UI acceptance remains open; these are storage/core checks.
 
 ## Habit workflow verification
 

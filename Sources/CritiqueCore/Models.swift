@@ -108,7 +108,10 @@ public struct Goal: Codable, Identifiable, Equatable {
     public var updates: [GoalUpdate] = []
     public init(title: String = "") { self.title = title }
     public var progress: Double { updates.max(by: { $0.date < $1.date })?.value ?? 0 }
-    public var fraction: Double { min(1, max(0, progress / max(1, target))) }
+    public var fraction: Double {
+        guard target > 0 else { return 0 }
+        return min(1, max(0, progress / target))
+    }
     public var completed: Bool { progress >= target }
     public var completedDate: Date? {
         guard completed else { return nil }
