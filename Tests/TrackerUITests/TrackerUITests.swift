@@ -334,6 +334,25 @@ final class TrackerUITests: XCTestCase {
         print("BACKUP_EXPORT_EXPECTED_PROFILE|\(nickname)")
         app.terminate()
     }
+    func testNewerSchemaBackupShowsUpdateErrorWithoutReplacingSavedData() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        app.buttons["Settings"].tap()
+        let nickname = try XCTUnwrap(app.textFields["Username"].value as? String)
+        app.swipeUp()
+        selectBackupFixture("Critique Newer Schema Backup", in: app)
+        let error = app.alerts["Changes were not saved"]
+        XCTAssertTrue(error.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(error.staticTexts["This backup was created by a newer app. Update before restoring."].exists)
+        XCTAssertFalse(app.buttons["Replace current data"].exists,
+                       "A newer-schema backup must never offer a replacement confirmation")
+        error.buttons["OK"].tap(); app.swipeDown()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname)
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname,
+                       "Unsupported-version rejection must preserve saved data across relaunch")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
     func testInvalidBackupShowsErrorWithoutReplacingSavedData() throws {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
