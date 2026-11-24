@@ -10,11 +10,15 @@ final class TrackerUITests: XCTestCase {
         for _ in 0..<4 { if review.isHittable { break }; app.swipeUp() }
         XCTAssertTrue(review.isHittable); review.tap()
         XCTAssertTrue(app.navigationBars["Schedule habit"].waitForExistence(timeout: 5))
-        let title = "AI plan " + String(UUID().uuidString.prefix(6))
+        let uniqueText = "AI plan " + String(UUID().uuidString.prefix(6))
         app.navigationBars.buttons["Cancel"].tap()
         XCTAssertTrue(review.exists)
         review.tap()
-        replace(app.textFields["home-routine-habit-name"], with: title)
+        let name = app.textFields["home-routine-habit-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap()
+        name.typeText(uniqueText)
+        let title = try XCTUnwrap(name.value as? String)
+        XCTAssertTrue(title.contains(uniqueText))
         app.navigationBars.buttons["Add habit"].tap()
         XCTAssertTrue(app.staticTexts["Added to your habits"].waitForExistence(timeout: 5))
         app.terminate(); app.launch()
