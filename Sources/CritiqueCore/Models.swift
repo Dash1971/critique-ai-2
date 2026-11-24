@@ -18,6 +18,7 @@ public struct Habit: Codable, Identifiable, Equatable {
     public var id = UUID()
     public var title = ""
     public var category = "Routine"
+    public var aiGenerated: Bool? = nil
     public var weekdays = Set(1...7)
     public var created = Date()
     public var completed: Set<String> = []
@@ -194,5 +195,6 @@ public struct AppState: Codable, Equatable {
     public var timer: RunningTimer? = nil
     public var screenTime: [ScreenTimeEntry] = []
     public var coach: [CoachMessage] = []
+    public var dailyRoutine: DailyRoutinePlan? = nil
     public init() {}
 }

@@ -63,17 +63,26 @@ int main(int argc, char ** argv) {
         "structured generation rejects a missing app-owned fact context");
     cr_prepare(engine); output.clear();
     const int contract_status = cr_generate_contract(engine,
-        "Select the scope fact and propose one small activity. Return fact_ids, suggestions with kind and text, and question null. Keep it short.",
+        "Create an activity plan. Set response_kind to plan, select the scope fact and propose one small activity. Return fact_ids, suggestions with kind and text, and question null. Keep it short.",
         "Help me choose a first habit.", "{\"facts\":[{\"id\":\"scope\",\"text\":\"No activity history is available.\"}]}", 192,
         [](const char * bytes, size_t count, void * data) { static_cast<std::string *>(data)->append(bytes, count); }, &output, &metrics, error, sizeof(error));
     if (contract_status) std::cerr << "contract_status=" << contract_status << " error=" << error << "\n";
     require(contract_status == 0 && !metrics.reached_limit && metrics.constrained_json, "real grammar-constrained generation finishes");
     const auto draft = common_json::parse(output);
-    require(draft.at("suggestions").is_array() && !draft.at("suggestions").empty() && draft.at("suggestions")[0].is_object(),
-        "grammar enforces action objects rather than arbitrary strings");
+    const auto kind = draft.at("response_kind").get<std::string>();
+    require(kind == "facts" || kind == "plan" || kind == "clarification", "grammar declares a supported response kind");
+    require(draft.at("suggestions").is_array(), "suggestions remain an array for every response kind");
+    if (kind == "plan") {
+        require(!draft.at("suggestions").empty() && draft.at("suggestions")[0].is_object() && draft.at("question").is_null(),
+            "a generated plan contains action objects and a null question");
+    } else {
+        require(draft.at("suggestions").empty(), "facts and clarification cannot silently become an activity plan");
+        require(kind == "facts" ? draft.at("question").is_null() : draft.at("question").is_string(),
+            "clarification retains a question and facts do not invent one");
+    }
     bool known_facts = !draft.at("fact_ids").empty();
     for (const auto & id : draft.at("fact_ids")) known_facts = known_facts && id == "scope";
-    require(known_facts && draft.at("question").is_null(), "grammar permits only supplied fact IDs and does not echo a question");
+    require(known_facts, "grammar permits only supplied fact IDs");
     cr_destroy(engine);
-    std::cout << "30 bridge checks passed, including chat framing, reasoning separation, constrained JSON and real CPU inference. Not an iPhone benchmark.\n";
+    std::cout << "Bridge checks passed, including chat framing, reasoning separation, response kinds, constrained JSON and real CPU inference. Not an iPhone benchmark.\n";
 }

@@ -29,6 +29,10 @@ public struct CoachAction: Decodable, Equatable {
     enum CodingKeys: String, CodingKey { case kind, text; case proposedMinutes = "proposed_minutes" }
 }
 public struct ContractCheckedCoachReply {
+    public enum Kind: String, Decodable {
+        case facts, plan, clarification
+    }
+    public let kind: Kind
     /// These strings are copied from the app's fact context, never from the model.
     public let facts: [CoachFact]
     /// Selection is traceability metadata, not permission to hide other facts.
@@ -36,6 +40,25 @@ public struct ContractCheckedCoachReply {
     public let suggestions: [CoachAction]
     public let rejectedSuggestionCount: Int
     public let question: String?
+
+    /// Shared by the app and the evaluation tool so that validation and what
+    /// the user actually sees cannot silently diverge.
+    public var displayText: String {
+        let selected = facts.filter { selectedFactIDs.contains($0.id) }
+        let remaining = facts.filter { !selectedFactIDs.contains($0.id) }
+        var sections = ["Recorded facts · app calculated\n" + selected.map { "• " + $0.text }.joined(separator: "\n")]
+        if !suggestions.isEmpty {
+            sections.append("New proposals · generated\n" + suggestions.map { action in
+                "• " + action.text + (action.proposedMinutes.map { " (Proposed duration: \($0) min.)" } ?? "")
+            }.joined(separator: "\n"))
+        }
+        if let question { sections.append("Clarifying question · generated\n" + question) }
+        if rejectedSuggestionCount > 0 { sections.append("Some generated suggestions failed validation and were omitted.") }
+        if !remaining.isEmpty {
+            sections.append("Other supplied evidence · app calculated\n" + remaining.map { "• " + $0.text }.joined(separator: "\n"))
+        }
+        return sections.joined(separator: "\n\n")
+    }
 }
 
 public extension AppState {
@@ -93,19 +116,25 @@ public extension AppState {
 /// fake model answer or fabricated saved activity.
 public enum CoachContract {
     private struct Draft: Decodable {
+        let kind: ContractCheckedCoachReply.Kind?
         let factIDs: [String]
         let suggestions: [CoachAction]
         let question: String?
-        enum CodingKeys: String, CodingKey { case factIDs = "fact_ids", suggestions, question }
+        enum CodingKeys: String, CodingKey { case kind = "response_kind", factIDs = "fact_ids", suggestions, question }
     }
     public static func check(_ data: Data, against context: CoachFactContext) throws -> ContractCheckedCoachReply {
         guard data.count <= 12_000,
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              Set(object.keys).isSubset(of: ["fact_ids", "suggestions", "question"]),
+              Set(object.keys).isSubset(of: ["response_kind", "fact_ids", "suggestions", "question"]),
               let rawActions = object["suggestions"] as? [[String: Any]],
               rawActions.allSatisfy({ Set($0.keys).isSubset(of: ["kind", "text", "proposed_minutes"]) })
         else { throw DataError.invalid("The local coach returned an invalid response format.") }
         let draft = try JSONDecoder().decode(Draft.self, from: data)
+        // A malformed supplied context should be rejected, rather than trapping
+        // Dictionary(uniqueKeysWithValues:) before the error can reach the UI.
+        guard !context.facts.isEmpty, Set(context.facts.map(\.id)).count == context.facts.count else {
+            throw DataError.invalid("The supplied coach evidence is invalid.")
+        }
         let known = Dictionary(uniqueKeysWithValues: context.facts.map { ($0.id, $0) })
         guard !draft.factIDs.isEmpty, draft.factIDs.count <= 6,
               Set(draft.factIDs).count == draft.factIDs.count,
@@ -127,14 +156,35 @@ public enum CoachContract {
         }
         let suggestions = draft.suggestions.filter(supported)
         if let question = draft.question {
-            guard question.count <= 180, question.hasSuffix("?"), question.rangeOfCharacter(from: .decimalDigits) == nil else {
+            guard (2...180).contains(question.count), question.hasSuffix("?"),
+                  question.filter({ $0 == "?" }).count == 1,
+                  question.rangeOfCharacter(from: .decimalDigits) == nil,
+                  CoachScopePolicy.boundary(for: question) == nil else {
                 throw DataError.invalid("The local coach returned an invalid clarifying question.")
             }
         }
-        guard !suggestions.isEmpty || !(draft.question ?? "").isEmpty else {
-            throw DataError.invalid("The local coach did not provide a suggestion or question.")
+        // Legacy trial responses remain reviewable. New runtime output declares
+        // its purpose explicitly so a record question need not invent advice.
+        let kind = draft.kind ?? (draft.question != nil && suggestions.isEmpty ? .clarification : .plan)
+        switch kind {
+        case .facts:
+            // A comparison limitation can itself answer a trend question.
+            // Generic scope/coverage metadata alone cannot answer a record query.
+            let scopeIDs: Set<String> = ["scope", "comparison_scope", "coverage"]
+            guard draft.suggestions.isEmpty, draft.question == nil,
+                  draft.factIDs.contains(where: { !scopeIDs.contains($0) }) else {
+                throw DataError.invalid("A record review must select recorded activity evidence without generated advice.")
+            }
+        case .plan:
+            guard !suggestions.isEmpty else {
+                throw DataError.invalid("The local coach did not provide a valid activity proposal.")
+            }
+        case .clarification:
+            guard draft.suggestions.isEmpty, draft.question != nil else {
+                throw DataError.invalid("The local coach did not provide a clarifying question.")
+            }
         }
-        return ContractCheckedCoachReply(facts: context.facts, selectedFactIDs: draft.factIDs,
+        return ContractCheckedCoachReply(kind: kind, facts: context.facts, selectedFactIDs: draft.factIDs,
                                          suggestions: suggestions, rejectedSuggestionCount: draft.suggestions.count - suggestions.count,
                                          question: draft.question)
     }

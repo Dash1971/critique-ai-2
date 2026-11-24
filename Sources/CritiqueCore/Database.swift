@@ -118,6 +118,17 @@ public enum Validation {
         guard (state.profile.photo?.count ?? 0) <= 5_000_000 else { throw DataError.invalid("Choose a profile image smaller than 5 MB.") }
         try unique(state.habits); try unique(state.routines); try unique(state.workouts); try unique(state.foods)
         try unique(state.meals); try unique(state.water); try unique(state.goals); try unique(state.focus); try unique(state.screenTime); try unique(state.coach)
+        if let plan = state.dailyRoutine {
+            guard Day.date(plan.day) != nil, TimeZone(identifier: plan.timezone) != nil,
+                  (1...3).contains(plan.suggestions.count) else { throw DataError.invalid("Invalid daily routine.") }
+            try unique(plan.suggestions)
+            for suggestion in plan.suggestions {
+                guard (1...280).contains(suggestion.title.count),
+                      suggestion.proposedMinutes.map({ (1...180).contains($0) }) ?? true else {
+                    throw DataError.invalid("Invalid routine suggestion.")
+                }
+            }
+        }
         for habit in state.habits {
             try title(habit.title)
             guard !habit.weekdays.isEmpty, habit.weekdays.isSubset(of: Set(1...7)), habit.reminderMinute.map({ (0..<1440).contains($0) }) ?? true else { throw DataError.invalid("Select a valid schedule and reminder time.") }

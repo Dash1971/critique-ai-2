@@ -35,7 +35,11 @@ def main():
     parser.add_argument("--cases", type=Path, required=True, help="Synthetic corpus JSON")
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--contract", action="store_true", help="Constrain JSON structure and fact IDs; use 256 output tokens")
+    parser.add_argument("--binary", type=Path, help="Alternate host binary; pair with --runtime-source for a preserved baseline")
+    parser.add_argument("--runtime-source", type=Path, help="Exact Runtime directory compiled into --binary")
     args = parser.parse_args()
+    if bool(args.binary) != bool(args.runtime_source):
+        parser.error("Supply both --binary and --runtime-source, or neither")
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,79}", args.trial):
         parser.error("Use a short lowercase trial label")
     manifest = json.loads((ROOT / "Docs/20261123_v0_local_model_candidates.json").read_text())
@@ -45,7 +49,10 @@ def main():
     weights = ROOT / "local/models" / args.model
     if weights.stat().st_size != model["bytes"] or digest(weights) != model["sha256_publisher_metadata"]:
         raise RuntimeError("Model verification failed")
-    binary = ROOT / "build/runtime-host/bin/critique-coach"
+    binary = (args.binary or ROOT / "build/runtime-host/bin/critique-coach").resolve()
+    runtime_source = (args.runtime_source or ROOT / "Runtime").resolve()
+    if not binary.is_file() or not (runtime_source / "CoachBridge.cpp").is_file():
+        parser.error("Build the selected runtime before evaluating it")
     cases = json.loads(args.cases.read_text())
     ids = [item["id"] for item in cases["cases"]]
     if len(ids) != len(set(ids)):
@@ -57,12 +64,13 @@ def main():
     shutil.copyfile(args.cases, inputs / "cases.json")
     shutil.copyfile(args.policy, inputs / "policy.txt")
     source_hashes = {}
-    for path in sorted((ROOT / "Runtime").rglob("*")):
+    for path in sorted(runtime_source.rglob("*")):
         if path.is_file():
-            target = inputs / path.relative_to(ROOT)
+            relative = Path("Runtime") / path.relative_to(runtime_source)
+            target = inputs / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, target)
-            source_hashes[str(path.relative_to(ROOT))] = digest(path)
+            source_hashes[str(relative)] = digest(path)
     result = {"status": "running", "started_at_utc": now(), "model": model,
               "runtime_binary_sha256": digest(binary), "runtime_source_hashes": source_hashes,
               "policy_sha256": digest(inputs / "policy.txt"), "cases_sha256": digest(inputs / "cases.json"),

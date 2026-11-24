@@ -22,7 +22,11 @@ import CritiqueCore
             let testing = CommandLine.arguments.contains("--ui-testing")
             let filename: String
             if !testing { filename = "state.sqlite" }
-            else if CommandLine.arguments.contains("--ui-testing-backup-import-fixture") {
+            else if CommandLine.arguments.contains("--ui-testing-home-fixture") {
+                filename = "UITest-home-state.sqlite"
+            } else if CommandLine.arguments.contains("--ui-testing-workout-workflow-fixture") {
+                filename = "UITest-workout-workflow-state.sqlite"
+            } else if CommandLine.arguments.contains("--ui-testing-backup-import-fixture") {
                 filename = "UITest-backup-import-state.sqlite"
             } else if CommandLine.arguments.contains("--ui-testing-goal-workflow-fixture") {
                 filename = "UITest-goal-workflow-state.sqlite"

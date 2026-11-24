@@ -1,0 +1,422 @@
+[
+  {
+    "id": "factual-answer",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": true,
+    "contains": [
+      "2 out of 7 scheduled."
+    ],
+    "excludes": [
+      "New proposals"
+    ]
+  },
+  {
+    "id": "visible-clarification",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "clarification",
+      "suggestions": [],
+      "question": "Which activity would you like to work on first?"
+    },
+    "accept": true,
+    "contains": [
+      "Which activity would you like to work on first?"
+    ],
+    "excludes": [
+      "New proposals"
+    ]
+  },
+  {
+    "id": "activity-plan",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "plan",
+      "suggestions": [
+        {
+          "kind": "practice",
+          "text": "Try a short reading session.",
+          "proposed_minutes": 10
+        }
+      ],
+      "question": null
+    },
+    "accept": true,
+    "contains": [
+      "Try a short reading session.",
+      "Proposed duration: 10 min."
+    ],
+    "excludes": []
+  },
+  {
+    "id": "empty-plan",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "plan",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "empty-clarification",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "clarification",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "advice-masquerading-as-facts",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [
+        {
+          "kind": "practice",
+          "text": "Try a short reading session.",
+          "proposed_minutes": 10
+        }
+      ],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "question-masquerading-as-facts",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": "What activity?"
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "unknown-kind",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "unsupported",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "unknown-evidence",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "invented"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "duplicate-evidence-selection",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0",
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "duplicate-input-context",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      },
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "empty-input-context",
+    "facts": [],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "hidden-question-chain",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "clarification",
+      "suggestions": [],
+      "question": "First question? Another question?"
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "medical-question",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "clarification",
+      "suggestions": [],
+      "question": "What medication dosage should you take?"
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "scope-only-factual-answer",
+    "facts": [
+      {
+        "id": "scope",
+        "text": "Selected records."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "scope"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "unselected-evidence-stays-visible",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      },
+      {
+        "id": "workouts",
+        "text": "Zero saved workouts does not prove no exercise occurred."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": true,
+    "contains": [
+      "Other supplied evidence",
+      "does not prove no exercise occurred."
+    ],
+    "excludes": []
+  },
+  {
+    "id": "legacy-plan",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "suggestions": [
+        {
+          "kind": "practice",
+          "text": "Try a short reading session.",
+          "proposed_minutes": 10
+        }
+      ],
+      "question": null
+    },
+    "accept": true,
+    "contains": [
+      "Try a short reading session."
+    ],
+    "excludes": []
+  },
+  {
+    "id": "legacy-empty-reply",
+    "facts": [
+      {
+        "id": "habit_0",
+        "text": "Recorded completions: 2 out of 7 scheduled."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "habit_0"
+      ],
+      "suggestions": [],
+      "question": null
+    },
+    "accept": false,
+    "contains": [],
+    "excludes": []
+  },
+  {
+    "id": "comparison-limitation-is-an-answer",
+    "facts": [
+      {
+        "id": "comparison_limit",
+        "text": "No previous-period comparison is included."
+      }
+    ],
+    "reply": {
+      "fact_ids": [
+        "comparison_limit"
+      ],
+      "response_kind": "facts",
+      "suggestions": [],
+      "question": null
+    },
+    "accept": true,
+    "contains": [
+      "No previous-period comparison is included."
+    ],
+    "excludes": [
+      "New proposals"
+    ]
+  }
+]

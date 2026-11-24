@@ -1,6 +1,141 @@
 import XCTest
 
 final class TrackerUITests: XCTestCase {
+    func testHomeRoutineReviewSchedulesOnlyAfterConfirmation() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-home-fixture"]
+        app.launch()
+        let review = app.buttons["Review & schedule"].firstMatch
+        for _ in 0..<4 { if review.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(review.isHittable); review.tap()
+        XCTAssertTrue(app.navigationBars["Schedule habit"].waitForExistence(timeout: 5))
+        let title = "AI plan " + String(UUID().uuidString.prefix(6))
+        app.navigationBars.buttons["Cancel"].tap()
+        XCTAssertTrue(review.exists)
+        review.tap()
+        replace(app.textFields["home-routine-habit-name"], with: title)
+        app.navigationBars.buttons["Add habit"].tap()
+        XCTAssertTrue(app.staticTexts["Added to your habits"].waitForExistence(timeout: 5))
+        app.terminate(); app.launch()
+        app.tabBars.buttons["Habits"].tap()
+        let row = app.cells.containing(.staticText, identifier: title).firstMatch
+        for _ in 0..<5 { if row.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(row.exists)
+        XCTAssertTrue(app.buttons[title + ", not completed"].exists)
+        // Preserve this synthetic saved habit as evidence; never reset fixtures.
+    }
+
+    func testHomeHabitCompletionUpdatesProgressAndPersists() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-home-fixture"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.tabBars.buttons["Today"].exists)
+        XCTAssertTrue(app.staticTexts["home-greeting"].exists)
+        let summary = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "scheduled habits completed")).firstMatch.label
+        let counts = summary.split(separator: " ").compactMap { Int($0) }
+        XCTAssertEqual(counts.count, 2)
+        let done = counts[0], scheduled = counts[1] + 1
+
+        let title = "Home habit " + String(UUID().uuidString.prefix(6))
+        app.tabBars.buttons["Habits"].tap(); app.buttons["Create habit"].tap()
+        app.textFields["Habit name"].tap(); app.textFields["Habit name"].typeText(title)
+        app.navigationBars.buttons["Save"].tap()
+        app.tabBars.buttons["Home"].tap()
+        XCTAssertEqual(app.staticTexts["home-daily-progress"].label, (Double(done) / Double(scheduled)).formatted(.percent.precision(.fractionLength(0))))
+        let overview = XCTAttachment(screenshot: app.screenshot()); overview.name = "Home top - synthetic saved data"; overview.lifetime = .keepAlways; add(overview)
+        let button = app.buttons[title + ", not completed"]
+        for _ in 0..<6 { if button.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(button.isHittable); button.tap()
+        XCTAssertTrue(app.buttons[title + ", completed"].exists)
+        app.swipeDown(); app.swipeDown(); app.swipeDown()
+        XCTAssertEqual(app.staticTexts["home-daily-progress"].label, (Double(done + 1) / Double(scheduled)).formatted(.percent.precision(.fractionLength(0))))
+        app.terminate(); app.launch()
+        let saved = app.buttons[title + ", completed"]
+        for _ in 0..<6 { if saved.isHittable { break }; app.swipeUp() }
+        XCTAssertTrue(saved.exists)
+        // Keep the added synthetic habit and its saved completion as evidence.
+    }
+
+    func testRoutineRenameAndConfirmedDeletionPreserveRecordedWorkout() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--ui-testing-workout-workflow-fixture"]
+        let suffix = String(UUID().uuidString.prefix(6))
+        let original = "Routine " + suffix, edited = "Edited routine " + suffix
+        let recorded = "Routine record " + suffix
+        func openWorkouts() {
+            app.tabBars.buttons["Activity"].tap(); app.buttons["Workouts and routines"].tap()
+        }
+        func routineCell(_ title: String) -> XCUIElement {
+            app.cells.containing(.staticText, identifier: title).firstMatch
+        }
+        func reveal(_ element: XCUIElement) {
+            for _ in 0..<5 {
+                if element.isHittable { break }
+                // Start above the software keyboard, within the active form.
+                let keyboard = app.keyboards.firstMatch
+                let bottom = keyboard.exists ? keyboard.frame.minY : app.frame.maxY
+                let start = min(0.75, (bottom - app.frame.minY - 45) / app.frame.height)
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: start))
+                    .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.26)))
+            }
+            XCTAssertTrue(element.isHittable, app.debugDescription)
+        }
+        app.launch(); openWorkouts(); app.buttons["Create routine"].tap()
+        app.textFields["Routine title"].tap(); app.textFields["Routine title"].typeText(original)
+        reveal(app.buttons["Add exercise"]); app.buttons["Add exercise"].tap()
+        reveal(app.textFields["Exercise name"])
+        app.textFields["Exercise name"].tap(); app.textFields["Exercise name"].typeText("Fixture squat")
+        replace(app.textFields["kg"], with: "12")
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(routineCell(original).waitForExistence(timeout: 5))
+        routineCell(original).buttons["Edit"].tap()
+        replace(app.textFields["Routine title"], with: edited)
+        app.navigationBars.buttons["Save"].tap()
+        app.terminate(); app.launch(); openWorkouts()
+        XCTAssertTrue(routineCell(edited).waitForExistence(timeout: 5))
+        routineCell(edited).buttons["Record session"].tap()
+        XCTAssertEqual(app.textFields["Workout title"].value as? String, edited)
+        XCTAssertEqual(app.textFields["Exercise name"].value as? String, "Fixture squat")
+        replace(app.textFields["Workout title"], with: recorded)
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "Workout editor before save"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+        // Query the active modal's unique button without assuming its toolbar
+        // is exposed as a navigation-bar descendant on every OS version.
+        let saveWorkout = app.buttons["Save"]
+        XCTAssertTrue(saveWorkout.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveWorkout.isHittable)
+        saveWorkout.tap()
+        XCTAssertTrue(app.textFields["Workout title"].waitForNonExistence(timeout: 5),
+                      "A saved workout must dismiss its editor")
+        routineCell(edited).buttons["Edit"].tap()
+        reveal(app.buttons["Delete routine"]); app.buttons["Delete routine"].tap()
+        // Compact confirmation dialogs may be popovers rather than sheets.
+        let confirmation = app.staticTexts["Delete this routine? Saved workouts will remain."]
+        let deletionHierarchy = XCTAttachment(string: app.debugDescription)
+        deletionHierarchy.name = "Routine deletion confirmation"; deletionHierarchy.lifetime = .keepAlways; add(deletionHierarchy)
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        let outside = app.descendants(matching: .any).matching(identifier: "PopoverDismissRegion").firstMatch
+        if outside.exists { outside.tap() }
+        else { app.buttons["Cancel"].tap() }
+        XCTAssertTrue(confirmation.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Routine"].exists)
+        app.navigationBars.buttons["Cancel"].tap()
+        XCTAssertTrue(routineCell(edited).exists)
+        routineCell(edited).buttons["Edit"].tap()
+        reveal(app.buttons["Delete routine"]); app.buttons["Delete routine"].tap()
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        let deleteButtons = app.buttons.matching(identifier: "Delete routine").allElementsBoundByIndex.filter { $0.isHittable }
+        XCTAssertEqual(deleteButtons.count, 1, "Only the active confirmation action may be tapped")
+        try XCTUnwrap(deleteButtons.first).tap()
+        app.terminate(); app.launch(); openWorkouts()
+        XCTAssertFalse(routineCell(edited).exists)
+        reveal(app.staticTexts[recorded])
+        XCTAssertTrue(app.staticTexts[recorded].exists, "Deleting a template must preserve its recorded workout")
+    }
     func testGoalDeadlinePickerCancellationAndRelaunchPersistence() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -282,7 +417,7 @@ final class TrackerUITests: XCTestCase {
             XCTAssertEqual(recent.label, "\(key(start)) through \(key(end))")
         }
         XCTAssertTrue(app.staticTexts["Two completed periods; today is excluded."].exists)
-        app.navigationBars.buttons["Today"].tap()
+        app.navigationBars.buttons["Home"].tap()
         XCTAssertTrue(app.buttons["Compare recorded periods"].waitForExistence(timeout: 5))
     }
     // Prepare a new exclusive --scenario backup-import fixture, never normal data.

@@ -18,16 +18,16 @@ import UniformTypeIdentifiers
 }
 
 private enum Destination: String, CaseIterable, Identifiable, Hashable {
-    case today = "Today", habits = "Habits", goals = "Goals", activity = "Activity", coach = "Coach"
+    case home = "Home", habits = "Habits", goals = "Goals", activity = "Activity", coach = "Coach"
     var id: String { rawValue }
     var icon: String {
-        switch self { case .today: return "square.grid.2x2"; case .habits: return "checkmark.circle"; case .goals: return "target"; case .activity: return "figure.run"; case .coach: return "bubble.left.and.bubble.right" }
+        switch self { case .home: return "house"; case .habits: return "checkmark.circle"; case .goals: return "target"; case .activity: return "figure.run"; case .coach: return "bubble.left.and.bubble.right" }
     }
 }
 private struct TrackerRoot: View {
     @EnvironmentObject private var store: TrackerStore
     @Environment(\.horizontalSizeClass) private var horizontalSize
-    @State private var selected: Destination? = .today
+    @State private var selected: Destination? = .home
     @State private var preferences = false
     var body: some View {
         Group {
@@ -42,19 +42,19 @@ private struct TrackerRoot: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding()
             } else if horizontalSize == .compact {
-                TabView(selection: Binding(get: { selected ?? .today }, set: { selected = $0 })) {
+                TabView(selection: Binding(get: { selected ?? .home }, set: { selected = $0 })) {
                     ForEach(Destination.allCases) { destination in
                         NavigationStack { page(destination).toolbar { settingsButton } }
                             .tabItem { Label(destination.rawValue, systemImage: destination.icon) }
                             .tag(destination)
                     }
-                }
+                }.tint(.white)
             } else {
                 NavigationSplitView {
                     List(Destination.allCases, selection: $selected) { destination in
                         Label(destination.rawValue, systemImage: destination.icon).tag(destination)
                     }.navigationTitle("Critique AI 2.0")
-                } detail: { NavigationStack { page(selected ?? .today).toolbar { settingsButton } } }
+                } detail: { NavigationStack { page(selected ?? .home).toolbar { settingsButton } } }
             }
         }
         .sheet(isPresented: $preferences) { PreferencesSheet() }
@@ -70,7 +70,7 @@ private struct TrackerRoot: View {
     }
     @ViewBuilder private func page(_ destination: Destination) -> some View {
         switch destination {
-        case .today: TodayScreen()
+        case .home: HomeScreen()
         case .habits: HabitsScreen()
         case .goals: GoalsScreen()
         case .activity: ActivityScreen()
@@ -79,62 +79,7 @@ private struct TrackerRoot: View {
     }
 }
 
-private struct TodayScreen: View {
-    @EnvironmentObject private var store: TrackerStore
-    var body: some View {
-        ScrollView {
-            if let state = store.state {
-                let stats = state.stats(on: Date())
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        Image("Brand").resizable().scaledToFit().frame(width: 76, height: 60).accessibilityHidden(true)
-                        VStack(alignment: .leading) {
-                            Text("Today").font(.largeTitle.bold())
-                            Text(Date(), format: .dateTime.weekday(.wide).month().day()).foregroundStyle(.secondary)
-                        }
-                    }
-                    Text(state.habits.isEmpty ? "Start with one manageable habit." : "Choose one useful action for today.")
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        metric("Scheduled habits", value: "\(stats.doneHabits) / \(stats.dueHabits)", icon: "checkmark.circle")
-                        metric("Focus logged", value: "\(Int(stats.focusMinutes)) min", icon: "timer")
-                        metric("Workouts logged", value: "\(stats.workouts)", icon: "figure.strengthtraining.traditional")
-                        metric("Goals completed", value: "\(stats.completedGoals)", icon: "target")
-                    }
-                    if stats.dueHabits > 0 {
-                        ProgressView("Scheduled habit completion", value: stats.completion)
-                            .accessibilityValue("\(stats.doneHabits) of \(stats.dueHabits) completed")
-                    }
-                    GroupBox("Recorded habit completions · last 7 days") {
-                        Chart(state.series(days: 7)) { day in
-                            BarMark(x: .value("Day", day.day), y: .value("Completions", day.doneHabits))
-                                .accessibilityLabel(day.day).accessibilityValue("\(day.doneHabits) completions")
-                        }.frame(height: 170).chartXAxis(.hidden)
-                    }
-                    NavigationLink("Compare recorded periods") { RecordedPeriodComparisonScreen() }
-                    HStack {
-                        Label("Level \(state.level)", systemImage: "star")
-                        Spacer(); Text("\(state.xp) XP").monospacedDigit()
-                    }
-                    if !state.achievements.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Achievements").font(.headline)
-                            ForEach(state.achievements, id: \.self) { Label($0, systemImage: "rosette") }
-                        }
-                    }
-                }.padding()
-            }
-        }.navigationTitle("Today").navigationBarTitleDisplayMode(.inline)
-    }
-    private func metric(_ title: String, value: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.title2.bold()).monospacedDigit()
-        }.frame(maxWidth: .infinity, alignment: .leading).padding()
-            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 18))
-    }
-}
-
-private struct RecordedPeriodComparisonScreen: View {
+struct RecordedPeriodComparisonScreen: View {
     @EnvironmentObject private var store: TrackerStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var days = 7

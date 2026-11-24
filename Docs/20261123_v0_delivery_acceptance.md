@@ -1,6 +1,8 @@
 # Delivery acceptance ledger — 2026-11-23
 
-This is an unfinished independent application, not a TestFlight delivery.
+This is an unfinished independent application. A separate pinned experimental
+internal TestFlight build is available; distribution does not establish feature
+completion or model quality.
 Physical-device acceptance remains open. This ledger distinguishes
 implemented paths, observed evidence, and requirements not yet fulfilled.
 
@@ -75,7 +77,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Friends/challenges | No fake profiles, scores or decorative controls | Optional social/privacy/sharing and weekly leaderboard implementation/integration |
 | Synchronization | Local-only state, explicit backup/restore | CloudKit/account/container/conflict and multi-device integration |
 | Desktop | Adaptive sidebar design in shared native UI | Desktop runtime target, compile and actual desktop verification |
-| Distribution | Unsigned development builds only | App registration, reviewed signing configuration, archive/bundle audit and TestFlight processing/tester access |
+| Distribution | Separate pinned experimental internal TestFlight build validated, processed and access verified | Physical-device acceptance, model-quality acceptance and remaining UI gates |
 
 ## Release-blocking evidence
 
@@ -258,3 +260,71 @@ All generated outputs stay under ignored build/verification; model weights and
 pinned vendor sources stay under ignored local/. The dated evaluation checkpoint
 and trial manifests map exact model/source/policy/validator revisions. Do not
 replace old failure evidence or label routed out-of-scope cases as model passes.
+
+## Workout routine regression
+
+`testRoutineRenameAndConfirmedDeletionPreserveRecordedWorkout` targets routine
+rename/relaunch, exercise copying into a saved session, deletion cancellation
+and confirmed template deletion without removing the saved workout. It uses a
+separate persistent workout test store. The session-save check captures the
+editor hierarchy, targets the unique modal Save button without assuming toolbar
+ancestry, and requires editor dismissal. Routine creation, rename/relaunch,
+exercise copying and workout save/editor dismissal were observed. Read-only
+saved-state checks confirmed one copied exercise at 12 kg and preservation of
+prior records and seven other isolated stores. Template deletion and subsequent
+relaunch remain unverified. Confirmation lookup uses its text rather than
+requiring Sheet ancestry; only one hittable destructive action may be tapped. A disposable-database core
+regression separately targets template edits/deletion, recorded-exercise snapshot
+independence, reopen and previous-save recovery. That focused core regression
+passed (one test, zero failures); it is not a new full-suite run or UI acceptance.
+Neither check establishes full schedule editing, exercise-field coverage or
+timer interoperability.
+
+A focused two-test core run passed the routine snapshot regression and a new
+workout/timer persistence regression. For both Work and Break timers, saving an
+edited workout preserves the running deadline; settlement exactly at expiry
+survives reopening, records one session and leaves the workout unchanged.
+Repeated settlement adds no duplicate; the preceding recovery snapshot retains
+the active timer and edited workout. These disposable-database checks do not
+verify editor/background interaction, notification delivery or physical-device
+behavior. End-to-end timer/workout interoperability remains open.
+
+Workout deletion UI remains unverified: the offline retry stopped during
+simulator readiness, before build or assertions. This is not an application
+behavior failure or a passing regression.
+
+The isolated UI supervisor now bounds container lookup and SQLite lock waits,
+persists startup failures, and attempts simulator shutdown in a finally path.
+Four injected startup/cleanup timeout checks passed without simulator or app-data
+access. The corrected end-to-end workout UI regression has not yet run; these
+harness checks do not establish application behavior.
+
+A further bounded simulator startup attempt timed out before snapshot, build or
+UI assertions. No additional application behavior is verified; workout template
+deletion remains an open end-to-end gate.
+
+## Home dashboard
+
+Home replaces the Today tab with a dark, routine-first dashboard. Greeting/date,
+scheduled-habit completion percentage, saved focus/workout/goal totals, weekly
+habit chart and XP/level read the local store. Upcoming items use saved habit
+and workout schedule times and unfinished goal deadlines. See `Home.md`.
+
+On-device checked routine proposals persist separately from habits. Each needs
+explicit name/time/weekday review before scheduling; no generated activity is
+marked completed. Plans expire by local date/timezone; scheduled habits survive
+refresh. Backups without plan/provenance fields remain readable. The updated
+59-test core suite passed, including five focused Home persistence/scheduling
+and legacy-compatibility checks. Two focused Home simulator UI checks passed: live completion/progress and relaunch,
+plus proposal scheduling cancellation/confirmation and uncompleted-habit relaunch
+persistence. The original eight isolated stores remained unchanged. Proposal text
+was a synthetic UI fixture, not a new model-quality result. New-flow generation,
+physical-device resources and broader accessibility acceptance remain open.
+No model-quality approval.
+
+## Integrated source compatibility
+
+The integrated Home source retains the shipped structured facts/plan/clarification
+coach protocol and four-orientation metadata. The integrated core suite passes
+63 tests; all 19 portable protocol cases pass. Historical model-robustness results
+remain historical evidence, not acceptance of the Home generation flow.

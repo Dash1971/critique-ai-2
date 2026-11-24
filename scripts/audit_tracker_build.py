@@ -32,6 +32,10 @@ def main():
     info = plistlib.loads((app / 'Info.plist').read_bytes())
     assert info['CFBundleIdentifier'] == 'com.dash1971.critiqueai2'
     assert info['DTPlatformName'] == 'iphoneos' and info['UIDeviceFamily'] == [1, 2]
+    required_orientations = {'UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown',
+                             'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight'}
+    assert set(info.get('UISupportedInterfaceOrientations', [])) == required_orientations, 'Universal tracker must declare all four orientations'
+    assert set(info.get('UISupportedInterfaceOrientations~ipad', info['UISupportedInterfaceOrientations'])) == required_orientations
     binary = app / info['CFBundleExecutable']
     architectures = subprocess.check_output(['xcrun', 'lipo', '-archs', str(binary)], text=True).split()
     assert architectures == ['arm64']
@@ -55,6 +59,7 @@ def main():
         'measured_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'bundle_id': info['CFBundleIdentifier'], 'version': info['CFBundleShortVersionString'],
         'build': info['CFBundleVersion'], 'minimum_os': info['MinimumOSVersion'],
+        'supported_orientations': info['UISupportedInterfaceOrientations'],
         'device_families': info['UIDeviceFamily'], 'architectures': architectures,
         'executable_sha256': digest(binary), 'model_bytes': MODEL_BYTES,
         'model_sha256': MODEL_SHA, 'coach_policy_sha256': digest(app / 'CoachPolicy.txt'),

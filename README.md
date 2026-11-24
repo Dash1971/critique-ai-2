@@ -3,6 +3,17 @@
 Native self-improvement tracker with persistent local storage and experimental
 on-device coaching. No subscriptions or paywalls.
 
+## Home dashboard
+
+Home centers on a local AI daily routine with explicit review before scheduling.
+It shows saved habit progress, upcoming schedule times/deadlines, focus/workout/goal
+statistics, a weekly habit chart and XP/level. Generated proposals are not saved
+completions. See [Home](Docs/Home.md) for behavior and limitations.
+
+The local coach supports structured facts, plans and clarification. App-calculated
+facts remain distinct from generated proposals. Model quality and physical-device
+acceptance remain provisional.
+
 ## Features
 
 - Habits, goals, workouts, meals, water intake and focus sessions.
