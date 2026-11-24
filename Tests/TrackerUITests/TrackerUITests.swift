@@ -353,6 +353,25 @@ final class TrackerUITests: XCTestCase {
                        "Unsupported-version rejection must preserve saved data across relaunch")
         app.navigationBars.buttons["Cancel"].tap()
     }
+    func testSemanticInvalidBackupShowsValidationErrorWithoutReplacingSavedData() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        app.buttons["Settings"].tap()
+        let nickname = try XCTUnwrap(app.textFields["Username"].value as? String)
+        app.swipeUp()
+        selectBackupFixture("Critique Semantic Invalid Backup", in: app)
+        let error = app.alerts["Changes were not saved"]
+        XCTAssertTrue(error.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(error.staticTexts["Enter valid timer and water targets."].exists)
+        XCTAssertFalse(app.buttons["Replace current data"].exists,
+                       "A semantically invalid backup must never offer a replacement confirmation")
+        error.buttons["OK"].tap(); app.swipeDown()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname)
+        app.terminate(); app.launch(); app.buttons["Settings"].tap()
+        XCTAssertEqual(app.textFields["Username"].value as? String, nickname,
+                       "Semantic validation rejection must preserve saved data across relaunch")
+        app.navigationBars.buttons["Cancel"].tap()
+    }
     func testInvalidBackupShowsErrorWithoutReplacingSavedData() throws {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()

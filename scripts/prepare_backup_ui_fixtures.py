@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create synthetic backup files in a disposable simulator's local Files provider.
 
-Creates a new fixture directory, or adds an exclusive newer-schema file to an
+Creates a new fixture directory, or adds an exclusive invalid backup file to an
 existing synthetic fixture directory. Existing files and app databases are never
 opened or replaced.
 """
@@ -14,8 +14,11 @@ import subprocess
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--device', required=True, help='Booted simulator UUID')
-    parser.add_argument('--newer-schema', action='store_true',
+    variant = parser.add_mutually_exclusive_group()
+    variant.add_argument('--newer-schema', action='store_true',
                         help='Add only a new unsupported-version JSON to existing synthetic fixtures')
+    variant.add_argument('--semantic-invalid', action='store_true',
+                         help='Add schema-1 JSON with an invalid water target to existing fixtures')
     args = parser.parse_args()
     devices = json.loads(subprocess.check_output(
         ['xcrun', 'simctl', 'list', 'devices', 'booted', '--json'], text=True))
@@ -32,7 +35,7 @@ def main():
     if not storage.is_dir():
         parser.error('Local Files storage is unavailable')
     target = storage / 'CritiqueUITestBackups'
-    if args.newer_schema:
+    if args.newer_schema or args.semantic_invalid:
         if not target.is_dir():
             parser.error('Prepare the base synthetic fixture directory first')
     else:
@@ -51,6 +54,9 @@ def main():
     if args.newer_schema:
         state['schema'] = 2
         fixtures = {'Critique Newer Schema Backup.json': json.dumps(state)}
+    elif args.semantic_invalid:
+        state['settings']['waterTarget'] = 0
+        fixtures = {'Critique Semantic Invalid Backup.json': json.dumps(state)}
     for name, contents in fixtures.items():
         with (target / name).open('x') as fixture:
             fixture.write(contents)

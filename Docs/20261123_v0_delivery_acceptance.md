@@ -46,7 +46,12 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 - Newer-schema backup import: a synthetic schema-2 JSON selected through the
   native picker shows the update-required error, offers no replacement
   confirmation and preserves the saved profile across relaunch. The focused
-  simulator regression passed; semantic-invalid backup UI coverage remains open.
+  simulator regression passed.
+- Semantically invalid backup import: schema-1 JSON with a zero water target
+  shows the specific settings-validation error, offers no replacement
+  confirmation and preserves the saved profile across relaunch. The focused
+  simulator regression passed; all seven isolated saved states and recovery rows
+  were unchanged. Other invalid-field permutations are not exhaustively covered.
 - Native JSON export: a new file saved through the native picker matched the
   isolated synthetic SQLite payload byte-for-byte, including schema, profile
   and collection fields. The focused UI regression and separate read-only file
@@ -64,7 +69,7 @@ implemented paths, observed evidence, and requirements not yet fulfilled.
 | Goals | Cadences, target/progress/deadline, history/completion; focused edit/cadence/progress/deadline/relaunch/delete simulator regressions | Other cadence/history-date UI coverage and broader history presentation |
 | Focus/calendar | Persistent timers, session history, dated activity; Work deadline/background/relaunch/cancellation simulator regression | Break/rest, long-duration clock changes, real-device lifecycle and expanded date/layout checks |
 | Screen time | Clearly marked manual journal | Automatic collection/reporting requires native permission/entitlement integration; not implemented |
-| Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore and backup-file import; valid JSON import confirmation/cancellation/relaunch, malformed JSON/newer-schema rejection and native export bytes verified | Photo, semantic-invalid backup UI and theme validation |
+| Profile/settings | Local nickname/photo/theme; backup export/restore/reset controls; atomic previous-save restore; failed-load retry/restore and backup-file import; valid JSON import confirmation/cancellation/relaunch, malformed/newer-schema/zero-water-target rejection and native export bytes verified | Photo, broader invalid-backup permutations and theme validation |
 | Notifications | Per-type settings, permission request, real local queue, foreground delegate | Permission/delivery/deadline/streak/timer behavior on real devices |
 | AI coach | Actual bounded saved data, latest-workout exercise fields, checked facts/proposals, history, local diagnostics | Full quality/held-out corpus, broader workout history and long-term comparison, physical resource and lifecycle gates |
 | Friends/challenges | No fake profiles, scores or decorative controls | Optional social/privacy/sharing and weekly leaderboard implementation/integration |
